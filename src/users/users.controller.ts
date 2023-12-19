@@ -7,19 +7,26 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UpdateUserPasswordDto } from './dtos/update-user-password.dto';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { Roles } from '../decorators/roles.decorator';
+import { Role } from 'src/enums/role.enum';
+import { RolesGuard } from 'src/guards/roles.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
+  @Roles(Role.Admin)
+  @UseGuards(AuthGuard, RolesGuard)
   getAllUsers(@Query() query: Object) {
-    return this.usersService.find({});
+    return this.usersService.find(query);
   }
 
   @Get(':id')
@@ -33,7 +40,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: Partial<CreateUserDto>) {
+  update(@Param('id') id: string, @Body() body: UpdateUserDto) {
     return this.usersService.update(+id, body);
   }
 

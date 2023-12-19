@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from './order.entity';
 import { FindManyOptions, Repository } from 'typeorm';
@@ -21,39 +17,25 @@ export class OrdersService {
     const doc = await this.repo.findOne({ where: { id } });
 
     if (!doc) {
-      throw new Error(`Documents not found`);
+      throw new NotFoundException(`Documents not found`);
     }
     return doc;
   }
 
   async create(data: CreateOrderDto) {
-    try {
-      const order = this.repo.create(data);
-      await this.repo.save(order);
-      return order;
-    } catch (err) {
-      if (err.detail) {
-        throw new BadRequestException(err.detail);
-      }
-      throw new BadRequestException(err.message);
-    }
+    const order = this.repo.create(data);
+    await this.repo.save(order);
+    return order;
   }
 
   async update(id: number, data: UpdateOrderDto) {
-    try {
-      const doc = await this.findOne(id);
+    const doc = await this.findOne(id);
 
-      if (!doc) {
-        throw new Error(`Documents not found`);
-      }
-      Object.assign(doc, data); // update user with new attrs
-      return this.repo.save(doc); // save updated user
-    } catch (err) {
-      if (err.detail) {
-        throw new BadRequestException(err.detail);
-      }
-      throw new BadRequestException(err.message);
+    if (!doc) {
+      throw new NotFoundException(`Documents not found`);
     }
+    Object.assign(doc, data); // update user with new attrs
+    return this.repo.save(doc); // save updated user
   }
 
   async remove(id: number) {

@@ -28,33 +28,19 @@ export class CustomsService {
   }
 
   async create(data: CreateCustomDto): Promise<Custom> {
-    try {
-      const doc = this.repo.create(data);
-      await this.repo.save(doc);
-      return doc;
-    } catch (err) {
-      if (err.detail) {
-        throw new BadRequestException(err.detail);
-      }
-      throw new BadRequestException(err.message);
-    }
+    const doc = this.repo.create(data);
+    await this.repo.save(doc);
+    return doc;
   }
 
   async update(id: number, data: UpdateCustomDto) {
-    try {
-      const doc = await this.findOne(id);
+    const doc = await this.findOne(id);
 
-      if (!doc) {
-        throw new Error(`Documents not found`);
-      }
-      Object.assign(doc, data); // update user with new attrs
-      return this.repo.save(doc); // save updated user
-    } catch (err) {
-      if (err.detail) {
-        throw new BadRequestException(err.detail);
-      }
-      throw new BadRequestException(err.message);
+    if (!doc) {
+      throw new Error(`Documents not found`);
     }
+    Object.assign(doc, data); // update user with new attrs
+    return this.repo.save(doc); // save updated user
   }
 
   async remove(id: number) {

@@ -5,12 +5,17 @@ import { User } from '../users/user.entity';
 import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { promisify } from 'util';
 import { CreateUserDto } from '../users/dtos/create-user.dto';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 const scrypt = promisify(_scrypt);
 
 @Injectable()
 export class AuthService {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private jwtService: JwtService,
+  ) {}
 
   async signup(data: CreateUserDto) {
     const { name, email, password } = data;
@@ -30,7 +35,17 @@ export class AuthService {
       passwordConfirm: '',
     } as User);
 
-    return user;
+    let payload: object;
+    let token: string;
+    try {
+      payload = { sub: user.id, username: user.email };
+      token = await this.jwtService.signAsync(payload);
+    } catch (e) {
+      this.userService.remove(user.id);
+      throw new BadRequestException(`Error creating user ${e.message}`);
+    }
+
+    return { jwt: token, user };
   }
 
   async login(email: string, password: string) {
@@ -47,7 +62,17 @@ export class AuthService {
       throw new BadRequestException('Incorrect email or password');
     }
 
-    return user;
+    let payload: object;
+    let token: string;
+    try {
+      payload = { sub: user.id, username: user.email };
+      token = await this.jwtService.signAsync(payload);
+    } catch (e) {
+      this.userService.remove(user.id);
+      throw new BadRequestException(`Error creating user ${e.message}`);
+    }
+
+    return { jwt: token, user };
   }
 
   async forgotPassword(email: string) {}

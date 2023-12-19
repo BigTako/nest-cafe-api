@@ -1,5 +1,3 @@
-const dbConfig = require('./../ormconfig.js');
-
 import { MiddlewareConsumer, Module, ValidationPipe } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -10,14 +8,36 @@ import { OrdersModule } from './orders/orders.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
-const cookieSession = require('cookie-session');
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import { AuthModule } from './auth/auth.module';
+import * as cookieParser from 'cookie-parser';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot(dbConfig),
+    ConfigModule.forRoot({
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        return {
+          type: 'postgres',
+          host: configService.get<string>('DB_HOST'),
+          port: configService.get<number>('DB_PORT'),
+          username: configService.get<string>('DB_USER'),
+          password: configService.get<string>('DB_PASSWORD'),
+          database: configService.get<string>('DB_NAME'),
+          entities: [configService.get<string>('DB_ENTITIES')],
+          synchronize: configService.get<boolean>('DB_SYNCHRONIZE'),
+        };
+      },
+      inject: [ConfigService],
+    }),
     UsersModule,
     CustomsModule,
     OrdersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -29,16 +49,16 @@ const cookieSession = require('cookie-session');
         whitelist: true,
       }),
     },
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
   ],
 })
 export class AppModule {
+  constructor(private configService: ConfigService) {}
+
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(
-        cookieSession({
-          keys: ['development key'], // string is used for encryption
-        }),
-      )
-      .forRoutes('*');
+    consumer.apply(cookieParser()).forRoutes('*');
   }
 }
