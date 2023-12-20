@@ -45,13 +45,14 @@ export class UsersService {
     return await this.jwtService.signAsync({ id: user.id });
   }
 
+  hashSHA256(str: string): string {
+    return crypto.createHash('sha256').update(str).digest('hex');
+  }
+
   async createPasswordResetToken(user: User) {
     const resetToken = crypto.randomBytes(32).toString('hex');
 
-    user.passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
+    user.passwordResetToken = this.hashSHA256(resetToken);
 
     // console.log({ resetToken }, this.passwordResetToken);
 

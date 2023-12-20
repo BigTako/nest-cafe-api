@@ -6,7 +6,7 @@ import {
 import { UsersService } from '../users/users.service';
 
 import { CreateUserDto } from '../users/dtos/create-user.dto';
-import { FindManyOptions } from 'typeorm';
+import { FindManyOptions, MoreThan } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../users/user.entity';
@@ -54,7 +54,9 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     // find user by email
-    const [user] = await this.userService.find({ email } as FindManyOptions);
+    const [user] = await this.userService.find({
+      where: { email },
+    } as FindManyOptions);
     // check if it exists
     if (!user) {
       throw new NotFoundException('No user with that email exists');
@@ -68,10 +70,13 @@ export class AuthService {
       const options = {
         to: user.email,
         subject: 'Your password reset token (valid for 10 min)',
-        text: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetToken}`,
+        text: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${this.configService.get<string>(
+          'HOST',
+        )}/api/auth/resetPassword/${resetToken}`,
       };
       this.emailService.newTransporter();
       await this.emailService.sendEmail(options);
+      return { message: 'success' };
     } catch (e) {
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
@@ -83,5 +88,33 @@ export class AuthService {
     }
   }
 
-  async resetPassword(password: string, passwordConfirm: string) {}
+  async resetPassword(
+    token: string,
+    password: string,
+    passwordConfirm: string,
+  ) {
+    // get user based on the token
+    const hashedToken = this.userService.hashSHA256(token);
+
+    const [user] = await this.userService.find({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: MoreThan(Date.now()),
+    } as FindManyOptions);
+
+    // if token has not expired, and there is user, set the new password
+    if (!user) {
+      throw new BadRequestException('Token is invalid or has expired');
+    }
+
+    user.password = password;
+    user.passwordConfirm = passwordConfirm;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await this.userService.update(user.id, user);
+
+    const jwt = await this.singToken(user);
+
+    return { jwt, user };
+  }
 }

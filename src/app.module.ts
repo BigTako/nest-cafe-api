@@ -22,6 +22,7 @@ import emailConfig from '../config/email.config';
     ConfigModule.forRoot({
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [databaseConfig, emailConfig],
+      expandVariables: true,
     }),
 
     TypeOrmModule.forRootAsync({

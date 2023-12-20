@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
@@ -31,6 +32,7 @@ export class CreateUserDto {
   @Length(2, 256)
   readonly name: string;
 
+  @Expose()
   @IsEmail()
   readonly email: string;
 
