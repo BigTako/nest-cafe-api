@@ -1,35 +1,14 @@
-import { IsString, Length, Validate } from 'class-validator';
-import {
-  ValidatorConstraint,
-  ValidatorConstraintInterface,
-  ValidationArguments,
-} from 'class-validator';
+import { PickType } from '@nestjs/mapped-types';
+import { IsString, Length } from 'class-validator';
+import { CreateUserDto } from './create-user.dto';
 
-@ValidatorConstraint({ name: 'isPasswordMatching', async: false })
-export class IsPasswordMatching implements ValidatorConstraintInterface {
-  validate(value: any, args: ValidationArguments) {
-    const [relatedPropertyName] = args.constraints;
-    const relatedValue = (args.object as any)[relatedPropertyName];
-    return value === relatedValue; // compare the current field value with the value of the related field
-  }
-
-  defaultMessage(args: ValidationArguments) {
-    const [relatedPropertyName] = args.constraints;
-    return `$property must match ${relatedPropertyName}`;
-  }
-}
-
-export class UpdateUserPasswordDto {
-  @IsString()
+export class UpdateUserPasswordDto extends PickType(CreateUserDto, [
+  'password',
+  'passwordConfirm',
+]) {
+  @IsString({
+    message: 'Current password is required and must be a string',
+  })
   @Length(8, 256)
   readonly passwordCurrent: string;
-
-  @IsString()
-  @Length(8, 256)
-  readonly password: string;
-
-  @IsString()
-  @Length(8, 256)
-  @Validate(IsPasswordMatching, ['password'])
-  readonly passwordConfirm: string;
 }

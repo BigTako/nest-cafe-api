@@ -40,12 +40,12 @@ export class CreateUserDto {
 
   @IsString()
   @Length(8, 256)
-  readonly password: string;
+  password: string;
 
   @IsString()
   @Length(8, 256)
   @Validate(IsPasswordMatching, ['password'])
-  readonly passwordConfirm: string;
+  passwordConfirm: string;
 
   @IsOptional()
   @IsBoolean()
@@ -54,4 +54,10 @@ export class CreateUserDto {
   @IsOptional()
   @IsBoolean()
   activated: boolean;
+
+  @IsOptional()
+  passwordResetToken: string;
+
+  @IsOptional()
+  passwordResetExpires: Date;
 }

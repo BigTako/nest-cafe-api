@@ -7,11 +7,12 @@ import { AuthService } from '../auth/auth.service';
 import { AuthController } from '../auth/auth.controller';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { UserSubscriber } from './subscribers/user.subscriber';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User]), ConfigModule, JwtModule],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, UserSubscriber],
   exports: [UsersService],
 })
 export class UsersModule {}

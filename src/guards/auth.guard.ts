@@ -7,10 +7,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
+    private userService: UsersService,
     private jwtService: JwtService,
     private configServie: ConfigService,
   ) {}
@@ -28,9 +30,9 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configServie.get('JWT_SECRET'),
       });
-      // 💡 We're assigning the payload to the request object here
-      // so that we can access it in our route handlers
-      request['user'] = payload;
+
+      const user = await this.userService.findOne(Number(payload.id));
+      request['user'] = user;
     } catch {
       throw new UnauthorizedException(
         'You are not logged in! Please log in to get access.',
@@ -41,10 +43,12 @@ export class AuthGuard implements CanActivate {
 
   private extractTokenFromHeader(req: Request): string | undefined {
     let token: string;
-    const [type, reqToken] = req.headers.authorization.split(' ');
 
-    if (type === 'Bearer' && reqToken && reqToken !== 'null') {
-      token = reqToken;
+    if (req?.headers?.authorization) {
+      var [type, reqToken] = req.headers?.authorization?.split(' ');
+      if (type && type === 'Bearer' && reqToken && reqToken !== 'null') {
+        token = reqToken;
+      }
     } else if (req.cookies.jwt) {
       token = req.cookies.jwt;
     }

@@ -11,6 +11,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { AuthModule } from './auth/auth.module';
+import { EmailService } from './email/email.service';
 import * as cookieParser from 'cookie-parser';
 
 @Module({
@@ -47,12 +48,14 @@ import * as cookieParser from 'cookie-parser';
       provide: APP_PIPE,
       useValue: new ValidationPipe({
         whitelist: true,
+        skipMissingProperties: false,
       }),
     },
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
+    EmailService,
   ],
 })
 export class AppModule {
