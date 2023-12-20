@@ -29,4 +29,10 @@ export class AuthController {
     res.cookie('jwt', '');
     res.json({ message: 'success' });
   }
+
+  @Post('forgotPassword')
+  async forgotPassword(@Body('email') email: string) {
+    await this.authService.forgotPassword(email);
+    return { message: 'success' };
+  }
 }

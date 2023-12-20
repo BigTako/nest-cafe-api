@@ -1,35 +1,12 @@
-import { ConfigService } from '@nestjs/config';
+import { registerAs } from '@nestjs/config';
 
-export default function (configService: ConfigService) {
-  let config: Object = {};
-
-  switch (process.env.NODE_ENV) {
-    case 'development':
-      config = {
-        type: configService.get<string>('DB_TYPE'),
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USER'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        entities: [configService.get<string>('DB_ENTITIES')],
-        synchronize: configService.get<boolean>('DB_SYNCHRONIZE'),
-      };
-      break;
-    case 'test':
-      config = {
-        type: configService.get<string>('DB_TYPE'),
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USER'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        entities: [configService.get<string>('DB_ENTITIES')],
-        synchronize: configService.get<boolean>('DB_SYNCHRONIZE'),
-      };
-      break;
-    case 'production':
-      break;
-  }
-  return config;
-}
+export default registerAs('databaseConfig', () => ({
+  type: process.env.DB_TYPE,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 5432,
+  username: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  entities: [process.env.DB_ENTITIES],
+  synchronize: process.env.DB_SYNCHRONIZE,
+}));

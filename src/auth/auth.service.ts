@@ -4,56 +4,42 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { User } from '../users/user.entity';
 
 import { CreateUserDto } from '../users/dtos/create-user.dto';
-import { JwtService } from '@nestjs/jwt';
 import { FindManyOptions } from 'typeorm';
-const crypto = require('crypto');
+import { EmailService } from '../email/email.service';
+import { ConfigService } from '@nestjs/config';
+import { User } from '../users/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private configService: ConfigService,
+    private emailService: EmailService,
     private userService: UsersService,
-    private jwtService: JwtService,
   ) {}
 
-  private async createToken(user: User): Promise<string> {
-    return await this.jwtService.signAsync({ id: user.id });
-  }
-
-  private async createPasswordResetToken(user: User) {
-    const resetToken = crypto.randomBytes(32).toString('hex');
-
-    user.passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-    // console.log({ resetToken }, this.passwordResetToken);
-
-    user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-    return resetToken;
-  }
-
-  async signup(data: CreateUserDto) {
-    const user = await this.userService.create(data);
-    let jwt: string;
-
+  private async singToken(user: User): Promise<string> {
     try {
-      jwt = await this.createToken(user);
+      return await this.userService.createJWTToken(user);
     } catch (e) {
       this.userService.remove(user.id);
       throw new BadRequestException(`Error creating token ${e.message}`);
     }
+  }
+
+  async signup(data: CreateUserDto) {
+    const user = await this.userService.create(data);
+
+    const jwt = await this.singToken(user);
 
     return { jwt, user };
   }
 
   async login(email: string, password: string) {
-    const [user] = await this.userService.find({ email } as FindManyOptions);
-    let jwt: string;
+    const [user] = await this.userService.find({
+      where: { email },
+    } as FindManyOptions);
 
     if (
       !user ||
@@ -61,13 +47,7 @@ export class AuthService {
     ) {
       throw new BadRequestException('Incorrect email or password');
     }
-
-    try {
-      jwt = await this.createToken(user);
-    } catch (e) {
-      this.userService.remove(user.id);
-      throw new BadRequestException(`Error creating token ${e.message}`);
-    }
+    const jwt = await this.singToken(user);
 
     return { jwt, user };
   }
@@ -81,10 +61,26 @@ export class AuthService {
     }
 
     // create a reset token
-    const resetToken = await this.createPasswordResetToken(user);
+    const resetToken = await this.userService.createPasswordResetToken(user);
     await this.userService.update(user.id, user);
 
-    // email user the reset token
+    try {
+      const options = {
+        to: user.email,
+        subject: 'Your password reset token (valid for 10 min)',
+        text: `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetToken}`,
+      };
+      this.emailService.newTransporter();
+      await this.emailService.sendEmail(options);
+    } catch (e) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await this.userService.update(user.id, user);
+      console.log(e);
+      throw new BadRequestException(
+        `There was an error sending the email. Try again later!`,
+      );
+    }
   }
 
   async resetPassword(password: string, passwordConfirm: string) {}

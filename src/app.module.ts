@@ -15,18 +15,22 @@ import { EmailService } from './email/email.service';
 import * as cookieParser from 'cookie-parser';
 
 import databaseConfig from '../config/orm.config';
+import emailConfig from '../config/email.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-      // load: [databaseConfig],
+      load: [databaseConfig, emailConfig],
     }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: databaseConfig,
+      useFactory: async (configService: ConfigService) =>
+        configService.get('databaseConfig'),
       inject: [ConfigService],
     }),
+
     UsersModule,
     CustomsModule,
     OrdersModule,
@@ -36,7 +40,6 @@ import databaseConfig from '../config/orm.config';
   providers: [
     AppService,
     {
-      // create a global validation pipe in app module(each request will catch it)
       provide: APP_PIPE,
       useValue: new ValidationPipe({
         whitelist: true,

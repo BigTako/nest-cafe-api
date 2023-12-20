@@ -7,12 +7,17 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { promisify } from 'util';
 import { UpdateUserPasswordDto } from './dtos/update-user-password.dto';
+import { JwtService } from '@nestjs/jwt';
 
 const scrypt = promisify(_scrypt);
+const crypto = require('crypto');
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private repo: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private repo: Repository<User>,
+    private jwtService: JwtService,
+  ) {}
 
   async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(8).toString('hex');
@@ -26,6 +31,7 @@ export class UsersService {
 
   async correctPassword(storedPassword: string, suppliedPassword: string) {
     const [salt, dbPassHash] = storedPassword.split('.'); // [salt, hash
+    console.log(suppliedPassword);
     const suppliedPassHash = (await scrypt(
       suppliedPassword,
       salt,
@@ -33,6 +39,25 @@ export class UsersService {
     )) as Buffer;
 
     return dbPassHash === suppliedPassHash.toString('hex');
+  }
+
+  async createJWTToken(user: User): Promise<string> {
+    return await this.jwtService.signAsync({ id: user.id });
+  }
+
+  async createPasswordResetToken(user: User) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    user.passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    // console.log({ resetToken }, this.passwordResetToken);
+
+    user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    return resetToken;
   }
 
   async find(options: FindManyOptions) {

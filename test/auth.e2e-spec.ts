@@ -19,35 +19,43 @@ describe('Authentication testing (e2e)', () => {
     await dataSource.createQueryBuilder().delete().from(User).execute();
   });
 
+  let jwt: string;
+
+  const dumpName = 'alex';
+  const dumpEmail = 'libert761@gmail.com';
+  const dumpPassword = '12345678';
+
   it('handles a signup request with right credentials', async () => {
     return request(app.getHttpServer())
       .post('/auth/signup')
       .expect(201)
       .send({
-        name: 'van',
-        email: 'van@gmail.com',
-        password: '12345678',
-        passwordConfirm: '12345678',
+        name: dumpName,
+        email: dumpEmail,
+        password: dumpPassword,
+        passwordConfirm: dumpPassword,
       })
       .then((res) => {
         expect(res.body).toBeDefined();
+        expect(res.body.jwt).toBeDefined();
+        expect(res.body.user).toBeDefined();
       });
   });
 
   it('throws an error when trying to signup with email which is in use', async () => {
     await request(app.getHttpServer()).post('/auth/signup').send({
-      name: 'van2',
-      email: 'van@gmail.com',
-      password: '12345678',
-      passwordConfirm: '12345678',
+      name: dumpName,
+      email: dumpEmail,
+      password: dumpPassword,
+      passwordConfirm: dumpPassword,
     });
     return await request(app.getHttpServer())
       .post('/auth/signup')
       .send({
-        name: 'van',
-        email: 'van@gmail.com',
-        password: '12345678',
-        passwordConfirm: '12345678',
+        name: dumpName,
+        email: dumpEmail,
+        password: dumpPassword,
+        passwordConfirm: dumpPassword,
       })
       .expect(400);
   });
@@ -75,6 +83,7 @@ describe('Authentication testing (e2e)', () => {
       })
       .expect(400);
   });
+
   it('throws an error when trying to signup without required fields', async () => {
     return await request(app.getHttpServer())
       .post('/auth/signup')
@@ -87,17 +96,25 @@ describe('Authentication testing (e2e)', () => {
   });
 
   it('handles login with valid credentials', async () => {
-    await request(app.getHttpServer())
+    const res = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: 'van@gmail.com', password: '12345678' })
+      .send({ email: dumpEmail, password: dumpPassword })
       .expect(201);
+
+    expect(res.body).toBeDefined();
+    expect(res.body.jwt).toBeDefined();
+    expect(res.body.user).toBeDefined();
+    jwt = res.body.jwt;
   });
 
   it('throws BadRequestException trying to login to unexisting account', async () => {
     await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'van123@gmail.com', password: '12345678' })
-      .expect(400);
+      .expect(400)
+      .then((res) =>
+        expect(res.body.message).toContain('Incorrect email or password'),
+      );
   });
 
   it('throws BadRequestException trying to login with wrong password', async () => {
@@ -112,5 +129,12 @@ describe('Authentication testing (e2e)', () => {
       .post('/auth/login')
       .send({ password: '12345678sdf' })
       .expect(400);
+  });
+
+  it('handles logout request', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${jwt}`)
+      .expect(201);
   });
 });

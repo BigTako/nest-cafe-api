@@ -5,12 +5,25 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
 import { AuthController } from '../auth/auth.controller';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { UserSubscriber } from './subscribers/user.subscriber';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), ConfigModule, JwtModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [UsersController],
   providers: [UsersService, UserSubscriber],
   exports: [UsersService],

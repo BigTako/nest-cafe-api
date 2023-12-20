@@ -25,6 +25,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
     event.entity.password = await this.usersService.hashPassword(
       event.entity.password,
     );
+    event.entity.passwordConfirm = '';
   }
 
   async beforeUpdate(event: UpdateEvent<User>) {
