@@ -14,25 +14,17 @@ import { AuthModule } from './auth/auth.module';
 import { EmailService } from './email/email.service';
 import * as cookieParser from 'cookie-parser';
 
+import databaseConfig from '../config/orm.config';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      // load: [databaseConfig],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        return {
-          type: 'postgres',
-          host: configService.get<string>('DB_HOST'),
-          port: configService.get<number>('DB_PORT'),
-          username: configService.get<string>('DB_USER'),
-          password: configService.get<string>('DB_PASSWORD'),
-          database: configService.get<string>('DB_NAME'),
-          entities: [configService.get<string>('DB_ENTITIES')],
-          synchronize: configService.get<boolean>('DB_SYNCHRONIZE'),
-        };
-      },
+      useFactory: databaseConfig,
       inject: [ConfigService],
     }),
     UsersModule,
