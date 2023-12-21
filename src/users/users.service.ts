@@ -8,6 +8,7 @@ import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { promisify } from 'util';
 import { UpdateUserPasswordDto } from './dtos/update-user-password.dto';
 import { JwtService } from '@nestjs/jwt';
+import { UserDto } from './dtos/user.dto';
 
 const scrypt = promisify(_scrypt);
 const crypto = require('crypto');
@@ -50,15 +51,22 @@ export class UsersService {
   }
 
   async createPasswordResetToken(user: User) {
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    const { token: resetToken, hashedToken } =
+      await this.createAndHashRandomToken();
 
-    user.passwordResetToken = this.hashSHA256(resetToken);
-
-    // console.log({ resetToken }, this.passwordResetToken);
+    user.passwordResetToken = hashedToken;
 
     user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     return resetToken;
+  }
+
+  async createAndHashRandomToken() {
+    const token = crypto.randomBytes(32).toString('hex');
+
+    const hashedToken = this.hashSHA256(token);
+
+    return { token, hashedToken };
   }
 
   async find(options: FindManyOptions) {
@@ -74,12 +82,12 @@ export class UsersService {
   }
 
   async create(data: CreateUserDto) {
-    const user = this.repo.create(data as User);
+    const user = this.repo.create(data as unknown as User);
     await this.repo.save(user);
     return user;
   }
 
-  async update(id: number, data: Partial<CreateUserDto>) {
+  async update(id: number, data: Partial<CreateUserDto>): Promise<User> {
     const user = await this.findOne(id);
 
     if (!user) {

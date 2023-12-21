@@ -31,11 +31,11 @@ export class User {
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
 
-  @Column({ default: false })
+  @Column({ default: true })
   active: boolean;
 
   @Column({ default: false })
-  activated: true;
+  activated: boolean;
 
   @Column({ nullable: true })
   accountActivationToken: string;

@@ -20,10 +20,16 @@ import { UpdateUserPasswordDto } from '../users/dtos/update-user-password.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @SerializeAuth(UserDto)
   @Post('signup')
   async signup(@Body() body: CreateUserDto) {
     const data = await this.authService.signup(body);
+    return data;
+  }
+
+  @SerializeAuth(UserDto)
+  @Patch('activateAccount/:token')
+  async activateAccount(@Param('token') token: string) {
+    const data = await this.authService.activateAccount(token);
     return data;
   }
 

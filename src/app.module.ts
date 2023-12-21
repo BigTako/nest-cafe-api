@@ -23,6 +23,7 @@ import emailConfig from '../config/email.config';
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [databaseConfig, emailConfig],
       expandVariables: true,
+      isGlobal: true,
     }),
 
     TypeOrmModule.forRootAsync({

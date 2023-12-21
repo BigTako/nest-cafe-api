@@ -62,4 +62,10 @@ export class CreateUserDto {
 
   @IsOptional()
   passwordResetExpires: Date;
+
+  @IsOptional()
+  accountActivationToken: string;
+
+  @IsOptional()
+  accountActivationTokenExpires: Date;
 }

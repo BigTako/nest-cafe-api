@@ -21,6 +21,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { UserDto } from './dtos/user.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { QueryPipe } from 'src/pipes/query.pipe';
 
 @Controller('users')
 @Serialize(UserDto)
@@ -31,7 +32,7 @@ export class UsersController {
   @Get()
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
-  getAllUsers(@Query() query: Object) {
+  getAllUsers(@Query(QueryPipe) query: Object) {
     return this.usersService.find(query);
   }
 
