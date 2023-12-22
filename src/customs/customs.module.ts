@@ -5,7 +5,7 @@ import { CustomsController } from './customs.controller';
 import { CustomsService } from './customs.service';
 import { AuthModule } from '../auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
-import { UsersModule } from 'src/users/users.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [

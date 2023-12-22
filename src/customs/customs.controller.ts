@@ -13,10 +13,10 @@ import { CustomsService } from './customs.service';
 import { QueryPipe } from '../pipes/query.pipe';
 import { CreateCustomDto } from './dtos/create-custom.dto';
 import { UpdateCustomDto } from './dtos/update-custom.dto';
-import { AuthGuard } from 'src/guards/auth.guard';
-import { Roles } from 'src/decorators/roles.decorator';
-import { Role } from 'src/enums/role.enum';
-import { RolesGuard } from 'src/guards/roles.guard';
+import { AuthGuard } from '../guards/auth.guard';
+import { Roles } from '../decorators/roles.decorator';
+import { Role } from '../enums/role.enum';
+import { RolesGuard } from '../guards/roles.guard';
 
 @Controller('customs')
 export class CustomsController {

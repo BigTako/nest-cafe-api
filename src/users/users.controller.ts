@@ -21,7 +21,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { UserDto } from './dtos/user.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { QueryPipe } from 'src/pipes/query.pipe';
+import { QueryPipe } from '../pipes/query.pipe';
 
 @Controller('users')
 @Serialize(UserDto)
@@ -64,9 +64,9 @@ export class UsersController {
     return this.usersService.updatePassword(user.id, body);
   }
 
-  @Patch('me')
-  deleteCurrentUser(@Param('id') id: string) {
-    return `This action deletes current user`;
+  @Delete('me')
+  deleteCurrentUser(@CurrentUser() user: UserDto) {
+    return this.usersService.update(user.id, { active: false });
   }
 
   @Get(':id')

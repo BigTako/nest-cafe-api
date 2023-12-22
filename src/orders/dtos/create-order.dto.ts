@@ -1,8 +1,8 @@
-import { ArrayMinSize, IsArray, IsNumber } from 'class-validator';
+import { ArrayMinSize, IsArray, IsPositive } from 'class-validator';
 import { Custom } from './../../customs/custom.entity';
 
 export class CreateOrderDto {
-  @IsNumber()
+  @IsPositive()
   user: number;
 
   @IsArray()

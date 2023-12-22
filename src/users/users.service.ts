@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository } from 'typeorm';
@@ -8,7 +12,6 @@ import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { promisify } from 'util';
 import { UpdateUserPasswordDto } from './dtos/update-user-password.dto';
 import { JwtService } from '@nestjs/jwt';
-import { UserDto } from './dtos/user.dto';
 
 const scrypt = promisify(_scrypt);
 const crypto = require('crypto');
@@ -32,7 +35,6 @@ export class UsersService {
 
   async correctPassword(storedPassword: string, suppliedPassword: string) {
     const [salt, dbPassHash] = storedPassword.split('.'); // [salt, hash
-    console.log(suppliedPassword);
     const suppliedPassHash = (await scrypt(
       suppliedPassword,
       salt,
@@ -75,6 +77,7 @@ export class UsersService {
 
   async findOne(id: number) {
     const user = await this.repo.findOne({ where: { id } });
+
     if (!user) {
       throw new NotFoundException('Document not found');
     }
@@ -89,11 +92,6 @@ export class UsersService {
 
   async update(id: number, data: Partial<CreateUserDto>): Promise<User> {
     const user = await this.findOne(id);
-
-    if (!user) {
-      throw new NotFoundException('Document not found');
-    }
-
     Object.assign(user, data); // update user with new attrs
     return this.repo.save(user); // save updated user
   }
@@ -102,17 +100,15 @@ export class UsersService {
     const user = await this.findOne(userId);
 
     if (!(await this.correctPassword(user.password, data.passwordCurrent))) {
-      throw new NotFoundException('Given current password is incorrect');
+      throw new BadRequestException('Given current password is incorrect');
     }
 
-    return this.update(userId, data);
+    Object.assign(user, data); // update user with new attrs
+    return this.repo.save(user); // save updated user
   }
 
   async remove(id: number) {
     const user = await this.findOne(id);
-    if (!user) {
-      throw new NotFoundException('Document not found');
-    }
     return this.repo.remove(user);
   }
 }

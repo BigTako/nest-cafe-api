@@ -40,7 +40,6 @@ export class AuthController {
     return data;
   }
 
-  @SerializeAuth(UserDto)
   @Post('logout')
   logout(@Res() res: Response) {
     res.setHeader('Authorization', '');

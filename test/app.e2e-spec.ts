@@ -1,34 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
 import { Custom } from '../src/customs/custom.entity';
-
-const customsData = [
-  {
-    name: 'Pepperoni',
-    price: 100,
-    category: 'pizza',
-    compounds: 'tomato sauce, cheese, pepperoni',
-  },
-  {
-    name: 'Cheeseburger',
-    price: 40,
-    category: 'burger',
-    compounds: 'bun, cheese, meat, tomato, cucumber, onion, ketchup, mustard',
-  },
-  {
-    name: 'Coca Cola',
-    price: 20,
-    category: 'drink',
-    compounds: 'coca cola',
-  },
-];
+import { User } from '../src/users/user.entity';
+import { CustomsService } from '../src/customs/customs.service';
+import { customsData, isICustom } from './customs-test-data';
+import {
+  RequestRejectTest,
+  RequestResolveTest,
+} from '../src/utils/request-testing-utils';
+import {
+  getResolver,
+  notFoundRejector,
+  unauthorizedRejector,
+} from './request-testers';
 
 describe('App runtime testing (e2e)', () => {
   let app: INestApplication;
-  let foundedCustoms: Custom[];
+  let customService: CustomsService;
+  let foundedCustoms: Custom[] = [];
+
+  let RejectsUnauthorized: RequestRejectTest;
+  let RejectsNotFound: RequestRejectTest;
+  let ResolvesFind: RequestResolveTest;
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -36,160 +32,160 @@ describe('App runtime testing (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+
+    RejectsUnauthorized = unauthorizedRejector(app, '');
+    RejectsNotFound = notFoundRejector(app, '');
+    ResolvesFind = getResolver(app, '');
+
     const dataSource = app.get(DataSource);
     await dataSource.createQueryBuilder().delete().from(Custom).execute();
+    await dataSource.createQueryBuilder().delete().from(User).execute();
+
+    customService = app.get<CustomsService>(CustomsService);
+
+    const initCustoms = customsData.map((custom) =>
+      customService.create(custom as Custom),
+    );
+    await Promise.all(initCustoms);
+  });
+
+  afterAll(async () => {
+    await app.close();
   });
 
   it('defines app', async () => {
     expect(app).toBeDefined();
   });
 
-  it('successfully create customs with valid data', async () => {
-    const server = app.getHttpServer();
-    const promises = customsData.map((customData) =>
-      request(server).post('/customs').send(customData).expect(201),
-    );
+  describe('Unauthenticated guest interraction with customs', () => {
+    it('successfully finds all customs without options', async () => {
+      return ResolvesFind.test('/customs', (res) => {
+        expect(res.body).toHaveLength(customsData.length);
+        expect(res.body.every(isICustom)).toBe(true);
+        foundedCustoms = res.body;
+      });
+    });
 
-    const responses = await Promise.all(promises);
+    it('successfully finds custom by id', async () => {
+      return ResolvesFind.test(`/customs/${foundedCustoms[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+        expect(isICustom(res.body)).toBe(true);
+      });
+    });
 
-    responses.forEach((res) => {
-      expect(res.body).toBeDefined();
+    it('throws NotFoundException trying to find custom by invalid id', async () => {
+      return await RejectsNotFound.test('/customs/999');
+    });
+
+    it('successfully finds all customs filtered by category', async () => {
+      return ResolvesFind.setQuery({ category: 'pizza' }).test(
+        '/customs',
+        (res) => {
+          expect(res.body).toHaveLength(1);
+          expect(isICustom(res.body[0])).toBe(true);
+        },
+      );
+    });
+
+    it('successfully finds all customs filtered by category with limited fieds', async () => {
+      return ResolvesFind.setQuery({
+        category: 'pizza',
+        fields: 'name,category',
+      }).test('/customs', (res) => {
+        expect(res.body).toHaveLength(1);
+        const custom = res.body[0];
+        expect(custom.name).toBeDefined();
+        expect(custom.category).toBeDefined();
+        expect(custom.price).not.toBeDefined();
+      });
+    });
+
+    it('successfully finds all customs sorted by price asc', async () => {
+      return ResolvesFind.setQuery({ sort: 'price' }).test(
+        '/customs',
+        (res) => {
+          expect(res.body).toHaveLength(customsData.length);
+          expect(res.body[0].price).toBeLessThanOrEqual(
+            res.body[res.body.length - 1].price,
+          );
+        },
+      );
+    });
+
+    it('successfully finds all customs sorted by price desc', async () => {
+      return ResolvesFind.setQuery({ sort: '-price' }).test(
+        '/customs',
+        (res) => {
+          expect(res.body).toHaveLength(customsData.length);
+          expect(res.body[0].price).toBeGreaterThanOrEqual(
+            res.body[res.body.length - 1].price,
+          );
+        },
+      );
+    });
+
+    it('successfully limits number of output documents', async () => {
+      return ResolvesFind.setQuery({ limit: 1 }).test('/customs', (res) => {
+        expect(res.body).toHaveLength(1);
+      });
+    });
+
+    it('throws Unathorized trying to create custom', async () => {
+      return RejectsUnauthorized.setMethod('post').test('/customs');
+    });
+
+    it('throws Unathorized trying to update custom', async () => {
+      return RejectsUnauthorized.setMethod('patch').test(
+        `/customs/${foundedCustoms[0].id}`,
+      );
+    });
+
+    it('throws Unathorized trying to delete custom', async () => {
+      return RejectsUnauthorized.setMethod('delete').test(
+        `/customs/${foundedCustoms[0].id}`,
+      );
     });
   });
 
-  it('successfully finds all customs without options', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server).get('/customs').expect(200);
+  describe('Authenticated user interraction with users', () => {
+    it('throws Uauthorized trying to create a user', async () => {
+      return RejectsUnauthorized.setMethod('post').test('/users');
+    });
 
-    expect(response.body).toHaveLength(customsData.length);
-    const custom = response.body[0];
-    expect(typeof custom.id).toBe('number');
-    expect(typeof custom.name).toBe('string');
-    expect(typeof custom.category).toBe('string');
-    expect(typeof custom.compounds).toBe('string');
-    foundedCustoms = response.body;
+    it('throws Uauthorized trying to find all users without options', async () => {
+      return RejectsUnauthorized.setMethod('get').test('/users');
+    });
+
+    it('throws Uauthorized trying to find user by id', async () => {
+      return RejectsUnauthorized.setMethod('get').test('/users/123');
+    });
+
+    it('throws Uauthorized trying to update user by id', async () => {
+      return RejectsUnauthorized.setMethod('patch').test('/users/123');
+    });
+
+    it('throws Uauthorized trying to delete user by id', async () => {
+      return RejectsUnauthorized.setMethod('delete').test('/users/123');
+    });
   });
 
-  it('successfully finds all customs filtered by category', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .get('/customs')
-      .query({ category: 'pizza' })
-      .expect(200);
+  describe('Unauthenticated user interraction with own account', () => {
+    it('throws Uauthorized trying to get current user info', async () => {
+      return RejectsUnauthorized.setMethod('get').test('/users/me');
+    });
 
-    expect(response.body).toHaveLength(1);
-    const custom = response.body[0];
-    expect(typeof custom.id).toBe('number');
-    expect(typeof custom.name).toBe('string');
-    expect(typeof custom.category).toBe('string');
-    expect(typeof custom.compounds).toBe('string');
-  });
+    it('throws Uauthorized trying to update current user info', async () => {
+      return RejectsUnauthorized.setMethod('patch').test('/users/me');
+    });
 
-  it('successfully finds all customs filtered by category with limited fieds', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .get('/customs')
-      .query({ category: 'pizza', fields: 'name,category' })
-      .expect(200);
+    it('throws Uauthorized trying to update current user password', async () => {
+      return RejectsUnauthorized.setMethod('patch').test(
+        '/users/me/updatePassword',
+      );
+    });
 
-    expect(response.body).toHaveLength(1);
-    const custom = response.body[0];
-    expect(typeof custom.id).toBe('undefined');
-    expect(typeof custom.name).toBe('string');
-    expect(typeof custom.category).toBe('string');
-    expect(typeof custom.compounds).toBe('undefined');
-  });
-
-  it('successfully finds all customs sorted by price asc', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .get('/customs')
-      .query({ sort: 'price' })
-      .expect(200);
-
-    expect(response.body).toHaveLength(customsData.length);
-    expect(response.body[0].price).toBeLessThanOrEqual(
-      response.body[response.body.length - 1].price,
-    );
-  });
-
-  it('successfully finds all customs sorted by price desc', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .get('/customs')
-      .query({ sort: '-price' })
-      .expect(200);
-
-    expect(response.body).toHaveLength(customsData.length);
-    expect(response.body[0].price).toBeGreaterThanOrEqual(
-      response.body[response.body.length - 1].price,
-    );
-  });
-
-  it('successfully limits number of output documents', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .get('/customs')
-      .query({ limit: 1 })
-      .expect(200);
-
-    expect(response.body).toHaveLength(1);
-  });
-
-  it('throws BadRequestException trying to create custom with invalid body', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .post('/customs')
-      .send({ name: 'Pepperoni', price: '100', category: 'pizza' })
-      .expect(400);
-
-    expect(response.body).toBeDefined();
-    expect(response.body.message).toBeDefined();
-    expect(response.body.message).toContain(
-      'price must be a number conforming to the specified constraints',
-    );
-  });
-
-  it('throws NotFoundException trying to find custom by invalid id', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server).get('/customs/999').expect(404);
-
-    expect(response.body).toBeDefined();
-    expect(response.body.message).toBeDefined();
-    expect(response.body.message).toContain('Document not found');
-  });
-
-  it('throws BadRequestException trying to update custom with invalid body', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .patch(`/customs/${foundedCustoms[0].id}`)
-      .send({ price: '100' })
-      .expect(400);
-
-    expect(response.body).toBeDefined();
-    expect(response.body.message).toBeDefined();
-    expect(response.body.message).toContain(
-      'price must be a number conforming to the specified constraints',
-    );
-  });
-
-  it('should update custom with valid body', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .patch(`/customs/${foundedCustoms[0].id}`)
-      .send({ price: 200 })
-      .expect(200);
-
-    expect(response.body).toBeDefined();
-    expect(response.body.price).toBe(200);
-  });
-
-  it('should delete custom', async () => {
-    const server = app.getHttpServer();
-    const response = await request(server)
-      .delete(`/customs/${foundedCustoms[0].id}`)
-      .expect(200);
-
-    expect(response.body).toBeDefined();
+    it('throws Uauthorized trying to deactivate current user', async () => {
+      return RejectsUnauthorized.setMethod('delete').test('/users/me');
+    });
   });
 });
