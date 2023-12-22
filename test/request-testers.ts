@@ -42,7 +42,7 @@ export const forbiddenRejector = (app: INestApplication, jwt: string) =>
 export const notFoundRejector = (app: INestApplication, jwt: string) =>
   new RequestRejectTest(app, 404, 'get', 'Document not found').setJWT(jwt);
 
-export const BadRequestRejector = (app: INestApplication, jwt: string) =>
+export const badRequestRejector = (app: INestApplication, jwt: string) =>
   new RequestRejectTest(app, 400, 'get', 'Bad request').setJWT(jwt);
 
 export const passwordUpdateRejector = (app: INestApplication, jwt: string) =>

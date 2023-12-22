@@ -10,11 +10,14 @@ import {
   dumpDeletedUser,
   dumpNotActivatedUser,
 } from './users-test-data';
+import { RequestRejectTest } from '../src/utils/request-testing-utils';
+import { badRequestRejector, postResolver } from './request-testers';
+
+let RejectsInvalidCredentials: RequestRejectTest;
 
 describe('Authentication testing (e2e)', () => {
   let app: INestApplication;
   let userService: UsersService;
-
   let jwt: string;
 
   beforeAll(async () => {
@@ -38,131 +41,110 @@ describe('Authentication testing (e2e)', () => {
     await userService.create(dumpNotActivatedUser as User);
 
     await userService.create(dumpDeletedUser as User);
+
+    RejectsInvalidCredentials = badRequestRejector(app, '').setMessage(
+      'Incorrect email or password',
+    );
   });
 
   describe('SIGNUP', () => {
     it('throws an error when trying to signup with email which is in use', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/signup')
-        .send({
-          name: dumpAdmin.name,
-          email: dumpAdmin.email,
-          password: dumpAdmin.password,
-          passwordConfirm: dumpAdmin.passwordConfirm,
-        })
-        .expect(400);
+      return new RequestRejectTest(
+        app,
+        400,
+        'post',
+        `email ${dumpAdmin.email} already exists`,
+      ).test('/auth/signup');
     });
 
     it('throws an error when trying to signup with invalid email', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/signup')
-        .send({
+      return new RequestRejectTest(app, 400, 'post', 'email must be an email')
+        .setBody({
           name: 'van2',
           email: 'vangmail.com',
           password: '12345678',
           passwordConfirm: '12345678',
         })
-        .expect(400)
-        .then((res) => {
-          expect(res.body.message).toBeDefined();
-          expect(res.body.message).toContain('email must be an email');
-        });
+        .test('/auth/signup');
     });
 
     it('throws an error when trying to signup with invalid password confirm', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/signup')
-        .send({
+      return new RequestRejectTest(
+        app,
+        400,
+        'post',
+        'passwordConfirm must match password',
+      )
+        .setBody({
           name: dumpAdmin.name,
           email: dumpAdmin.email,
           password: dumpAdmin.password,
           passwordConfirm: dumpAdmin.password + '12345sdfsdf678',
         })
-        .expect(400);
+        .test('/auth/signup');
     });
 
     it('throws an error when trying to signup without required fields', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/signup')
-        .send({
+      return new RequestRejectTest(app, 400, 'post', 'name must be a string')
+        .setBody({
           email: dumpAdmin.email,
           password: dumpAdmin.password,
           passwordConfirm: dumpAdmin.passwordConfirm,
         })
-        .expect(400);
+        .test('/auth/signup');
     });
   });
 
   describe('LOGIN', () => {
     it('throws an error when trying to login to unactivated account', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: dumpNotActivatedUser.email,
-          password: dumpNotActivatedUser.password,
-        })
-        .expect(400)
-        .then((res) =>
-          expect(res.body.message).toContain('Incorrect email or password'),
-        );
+      return RejectsInvalidCredentials.setBody({
+        email: dumpNotActivatedUser.email,
+        password: dumpNotActivatedUser.password,
+      }).test('/auth/login');
     });
 
     it('throws an error when trying to login to deactivated account', async () => {
-      return await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: dumpDeletedUser.email,
-          password: dumpDeletedUser.password,
-        })
-        .expect(400)
-        .then((res) =>
-          expect(res.body.message).toContain('Incorrect email or password'),
-        );
+      return RejectsInvalidCredentials.setBody({
+        email: dumpDeletedUser.email,
+        password: dumpDeletedUser.password,
+      }).test('/auth/login');
     });
 
     it('handles login with valid credentials', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: dumpAdmin.email, password: dumpAdmin.password })
-        .expect(201);
-
-      expect(res.body).toBeDefined();
-      expect(res.body.jwt).toBeDefined();
-      expect(res.body.user).toBeDefined();
-      jwt = res.body.jwt;
+      return postResolver(app, '')
+        .setBody({ email: dumpAdmin.email, password: dumpAdmin.password })
+        .test('/auth/login', (res) => {
+          expect(res.body).toBeDefined();
+          expect(res.body.jwt).toBeDefined();
+          expect(res.body.user).toBeDefined();
+          jwt = res.body.jwt;
+        });
     });
 
     it('throws BadRequestException trying to login to unexisting account', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'van123@gmail.com', password: '12345678' })
-        .expect(400)
-        .then((res) =>
-          expect(res.body.message).toContain('Incorrect email or password'),
-        );
+      return RejectsInvalidCredentials.setBody({
+        email: 'van123@gmail.com',
+        password: '12345678',
+      }).test('/auth/login');
     });
 
     it('throws BadRequestException trying to login with wrong password', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: dumpAdmin.email, password: dumpAdmin.password + '123' })
-        .expect(400);
+      RejectsInvalidCredentials.setBody({
+        email: dumpAdmin.email,
+        password: dumpAdmin.password + '123',
+      }).test('/auth/login');
     });
 
     it('throws BadRequestException trying to login without required fields', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ password: '12345678sdf' })
-        .expect(400);
+      return new RequestRejectTest(app, 400, 'post', 'email must be an email')
+        .setBody({ password: '12345678sdf' })
+        .test('/auth/login');
     });
   });
 
   describe('LOGOUT', () => {
     it('handles logout request', async () => {
-      await request(app.getHttpServer())
-        .post('/auth/logout')
-        .set('Authorization', `Bearer ${jwt}`)
-        .expect(201);
+      return postResolver(app, jwt).test('/auth/logout', (res) => {});
     });
   });
 });
