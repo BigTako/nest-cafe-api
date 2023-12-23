@@ -1,5 +1,5 @@
 import { IsNumber, IsString, Length, Max, Min } from 'class-validator';
-import { Category } from '../custom.entity';
+import { Category } from '../enums/custom-category.enum';
 
 export class CreateCustomDto {
   @IsString()

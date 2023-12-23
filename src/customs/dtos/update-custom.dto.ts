@@ -6,7 +6,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { Category } from '../custom.entity';
+import { Category } from '../enums/custom-category.enum';
 
 export class UpdateCustomDto {
   @IsOptional()

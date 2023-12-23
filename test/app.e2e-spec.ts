@@ -16,6 +16,36 @@ import {
   unauthorizedRejector,
 } from './request-testers';
 
+class Rejector {
+  constructor(
+    private exceptionHandler: RequestRejectTest,
+    private entity: string,
+  ) {}
+
+  rejectsGetAll() {
+    it(`throws Unauthorized trying to get all ${this.entity}`, async () => {
+      return this.exceptionHandler.setMethod('get').test(`/${this.entity}`);
+    });
+    return this;
+  }
+
+  rejectsGetOne(id: string) {
+    it(`throws Unauthorized trying to get ${this.entity} by id`, async () => {
+      return this.exceptionHandler
+        .setMethod('get')
+        .test(`/${this.entity}/${id}`);
+    });
+    return this;
+  }
+
+  rejectsCreate() {
+    it(`throws Unauthorized trying to create ${this.entity}`, async () => {
+      return this.exceptionHandler.setMethod('post').test(`/${this.entity}`);
+    });
+    return this;
+  }
+}
+
 describe('App runtime testing (e2e)', () => {
   let app: INestApplication;
   let customService: CustomsService;
@@ -24,6 +54,8 @@ describe('App runtime testing (e2e)', () => {
   let RejectsUnauthorized: RequestRejectTest;
   let RejectsNotFound: RequestRejectTest;
   let ResolvesFind: RequestResolveTest;
+
+  let UnauthorizedUserRejector: Rejector;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -36,6 +68,8 @@ describe('App runtime testing (e2e)', () => {
     RejectsUnauthorized = unauthorizedRejector(app, '');
     RejectsNotFound = notFoundRejector(app, '');
     ResolvesFind = getResolver(app, '');
+
+    UnauthorizedUserRejector = new Rejector(RejectsUnauthorized, 'users');
 
     const dataSource = app.get(DataSource);
     await dataSource.createQueryBuilder().delete().from(Custom).execute();
@@ -147,29 +181,92 @@ describe('App runtime testing (e2e)', () => {
     });
   });
 
-  describe('Authenticated user interraction with users', () => {
-    it('throws Uauthorized trying to create a user', async () => {
-      return RejectsUnauthorized.setMethod('post').test('/users');
+  // describe('Unauthenticated guest interraction with users', () => {
+  //   it('throws Uauthorized trying to create a user', async () => {
+  //     return RejectsUnauthorized.setMethod('post').test('/users');
+  //   });
+
+  //   it('throws Uauthorized trying to find all users without options', async () => {
+  //     return RejectsUnauthorized.setMethod('get').test('/users');
+  //   });
+
+  //   it('throws Uauthorized trying to find user by id', async () => {
+  //     return RejectsUnauthorized.setMethod('get').test('/users/users/123');
+  //   });
+
+  //   it('throws Uauthorized trying to update user by id', async () => {
+  //     return RejectsUnauthorized.setMethod('patch').test('/users/users/123');
+  //   });
+
+  //   it('throws Uauthorized trying to delete user by id', async () => {
+  //     return RejectsUnauthorized.setMethod('delete').test('/users/users/123');
+  //   });
+  // });
+
+  // describe('Unauthenticated guest interraction with orders', () => {
+  //   it('throws Uauthorized trying to all orders', async () => {
+  //     return RejectsUnauthorized.setMethod('get').test('/orders');
+  //   });
+
+  //   it('throws Uauthorized trying get order by id', async () => {
+  //     return RejectsUnauthorized.setMethod('get').test('/orders/users/123');
+  //   });
+
+  //   it('throws Uauthorized trying to create order', async () => {
+  //     return RejectsUnauthorized.setMethod('post').test('/orders');
+  //   });
+
+  //   it('throws Uauthorized trying to update order', async () => {
+  //     return RejectsUnauthorized.setMethod('patch').test('/orders/users/123');
+  //   });
+
+  //   it('throws Uauthorized trying to delete order', async () => {
+  //     return RejectsUnauthorized.setMethod('delete').test('/orders/users/123');
+  //   });
+  // });
+  describe('Unauthenticated guest interraction with users', () => {
+    it(`throws Unauthorized trying to get all users`, async () => {
+      return RejectsUnauthorized.setMethod('get').test(`/users`);
     });
 
-    it('throws Uauthorized trying to find all users without options', async () => {
-      return RejectsUnauthorized.setMethod('get').test('/users');
+    it(`throws Unauthorized trying to get users by id`, async () => {
+      return RejectsUnauthorized.setMethod('get').test(`/users/123`);
     });
 
-    it('throws Uauthorized trying to find user by id', async () => {
-      return RejectsUnauthorized.setMethod('get').test('/users/123');
+    it(`throws Unauthorized trying to create users`, async () => {
+      return RejectsUnauthorized.setMethod('post').test(`/users`);
     });
 
-    it('throws Uauthorized trying to update user by id', async () => {
-      return RejectsUnauthorized.setMethod('patch').test('/users/123');
+    it(`throws Unauthorized trying to update users`, async () => {
+      return RejectsUnauthorized.setMethod('patch').test(`/users/123`);
     });
 
-    it('throws Uauthorized trying to delete user by id', async () => {
-      return RejectsUnauthorized.setMethod('delete').test('/users/123');
+    it(`throws Unauthorized trying to delete users`, async () => {
+      return RejectsUnauthorized.setMethod('delete').test(`/users/123`);
+    });
+
+    // testUnauthorizedAccess('orders', 'orders/users/123');
+  });
+
+  describe('Unauthenticated guest interraction authorized user orders', () => {
+    it('throws Uauthorized trying to all authorized user orders', async () => {
+      return RejectsUnauthorized.setMethod('get').test('/orders/me');
+    });
+
+    it('throws Uauthorized trying get authorized user order by id', async () => {
+      return RejectsUnauthorized.setMethod('get').test('/orders/me/123');
+    });
+
+    it('throws Uauthorized trying to update authorized user order', async () => {
+      return RejectsUnauthorized.setMethod('patch').test('/orders/me/123');
+    });
+
+    it('throws Uauthorized trying to delete order', async () => {
+      return RejectsUnauthorized.setMethod('delete').test('/orders/me/123');
     });
   });
 
-  describe('Unauthenticated user interraction with own account', () => {
+  describe('Unauthenticated guest interraction with own account', () => {
     it('throws Uauthorized trying to get current user info', async () => {
       return RejectsUnauthorized.setMethod('get').test('/users/me');
     });

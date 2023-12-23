@@ -5,35 +5,37 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  OneToOne,
   ManyToMany,
   JoinTable,
+  ManyToOne,
 } from 'typeorm';
-
-export enum Status {
-  New = 'new',
-  Paid = 'paid',
-  Unpaid = 'unpaid',
-  Resolved = 'resolved',
-  Cancelled = 'cancelled',
-}
+import { Status } from './enums/order-status.enum';
 
 @Entity({ name: 'orders' })
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  @OneToOne(() => User, (user) => user.id) // report.user is foreign key to User instance
-  user: number;
+  @ManyToOne(() => User, (user) => user.orders, {
+    eager: true,
+    onDelete: 'CASCADE',
+  }) // report.user is foreign key to User instance
+  user: User;
 
-  @Column()
+  @Column({ default: Status.New })
   status: Status;
 
-  @ManyToMany(() => Custom, (custom) => custom.id)
+  @Column({ default: 0 })
+  totalPrice: number;
+
+  @ManyToMany(() => Custom, (custom) => custom.orders, {
+    cascade: true,
+    eager: true,
+    onDelete: 'CASCADE',
+  })
   @JoinTable()
-  customs: number[];
+  customs: Custom[];
 
   @CreateDateColumn()
-  created: Date;
+  createdAt: Date;
 }

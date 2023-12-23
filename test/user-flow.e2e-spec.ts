@@ -15,13 +15,17 @@ import {
   RequestResolveTest,
 } from '../src/utils/request-testing-utils';
 import {
+  absentRequiredFieldRejector,
   deleteResolver,
   forbiddenRejector,
   getResolver,
   incorrectCurrentPasswordRejector,
+  notFoundRejector,
   passwordUpdateRejector,
   patchResolver,
+  postResolver,
 } from './request-testers';
+import { Order } from '../src/orders/order.entity';
 
 describe('App runtime testing (e2e)', () => {
   let app: INestApplication;
@@ -30,16 +34,20 @@ describe('App runtime testing (e2e)', () => {
   let customService: CustomsService;
 
   let foundedCustoms: Custom[];
+  let foundedOrders: Order[];
 
   let jwt: string;
   let user: User = dumpUser as User;
 
   let RejectsForbidden: RequestRejectTest;
+  let RejectsNotFound: RequestRejectTest;
   let RejectsPasswordChanging: RequestRejectTest;
   let RejectIncorrectCurrentPassword: RequestRejectTest;
+  let RejectsWrongFieldFormat: RequestRejectTest;
 
   let ResolvesFind: RequestResolveTest;
   let ResolvesUpdate: RequestResolveTest;
+  let ResolvesCreate: RequestResolveTest;
   let ResolvesDelete: RequestResolveTest;
 
   beforeAll(async () => {
@@ -91,7 +99,16 @@ describe('App runtime testing (e2e)', () => {
         jwt,
       );
 
+      RejectsWrongFieldFormat = absentRequiredFieldRejector(
+        app,
+        jwt,
+        'price must be a number conforming to the specified constraints',
+      );
+
+      RejectsNotFound = notFoundRejector(app, jwt);
+
       ResolvesFind = getResolver(app, jwt);
+      ResolvesCreate = postResolver(app, jwt);
       ResolvesUpdate = patchResolver(app, jwt);
       ResolvesDelete = deleteResolver(app, jwt);
     });
@@ -119,6 +136,95 @@ describe('App runtime testing (e2e)', () => {
     it('throws ForbiddenException trying to delete custom', async () => {
       return await RejectsForbidden.setMethod('delete').test(
         `/customs/${foundedCustoms[0].id}`,
+      );
+    });
+  });
+
+  describe('Authenticated user interraction with own orders', () => {
+    it('creates a new order', async () => {
+      return ResolvesCreate.setBody({ customs: [foundedCustoms[0].id] }).test(
+        '/orders',
+        (res) => {
+          expect(res.body).toBeDefined();
+          expect(res.body).toHaveProperty('id');
+        },
+      );
+    });
+
+    it('throws NotFoundException thying to create an order with nonexistent custom', async () => {
+      return RejectsNotFound.setMethod('post')
+        .setMessage('Custom with id 999 not found')
+        .setBody({
+          customs: [999],
+        })
+        .test('/orders');
+    });
+
+    it('throws BadRequestException trying to create an order with 0 customs specified', async () => {
+      return RejectsWrongFieldFormat.setMethod('post')
+        .setMessage('customs must contain at least 1 elements')
+        .setBody({
+          customs: [],
+        })
+        .test('/orders');
+    });
+
+    it('gets all current user orders', async () => {
+      return ResolvesFind.test('/orders/me', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(1);
+        const order = res.body[0];
+        expect(order.customs).toBeDefined();
+        expect(order.customs).toHaveLength(1);
+        expect(isIUser(order.user)).toBeTruthy();
+        expect(order.user.email).toBe(user.email);
+        expect(isICustom(order.customs[0])).toBeTruthy();
+        foundedOrders = res.body;
+      });
+    });
+
+    it('gets order by id', async () => {
+      return ResolvesFind.test(`/orders/me/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveProperty('id');
+      });
+    });
+
+    it('updates order', async () => {
+      return ResolvesUpdate.setBody({
+        customs: [foundedCustoms[1].id],
+      }).test(`/orders/me/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveProperty('id');
+        expect(res.body.customs).toHaveLength(1);
+      });
+    });
+
+    it('deletes order by id', async () => {
+      return ResolvesDelete.test(`/orders/me/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+      });
+    });
+  });
+
+  describe('Authenticated user interraction with all orders', () => {
+    it('throws Forbidden trying to find all orders', async () => {
+      return RejectsForbidden.setMethod('get').test('/orders');
+    });
+
+    it('throws Forbidden trying to find order by id', async () => {
+      return RejectsForbidden.test(`/orders/${123}`);
+    });
+
+    it('throws Forbidden trying to update order by id', async () => {
+      return RejectsForbidden.setMethod('patch')
+        .setBody({ customs: [foundedCustoms[0].id] })
+        .test(`/orders/${foundedOrders[0].id}`);
+    });
+
+    it('throws Forbidden trying to delete order by id', async () => {
+      return RejectsForbidden.setMethod('delete').test(
+        `/orders/${foundedOrders[0].id}`,
       );
     });
   });

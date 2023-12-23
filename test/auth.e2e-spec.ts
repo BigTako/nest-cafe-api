@@ -54,7 +54,9 @@ describe('Authentication testing (e2e)', () => {
         400,
         'post',
         `email ${dumpAdmin.email} already exists`,
-      ).test('/auth/signup');
+      )
+        .setBody(dumpAdmin)
+        .test('/auth/signup');
     });
 
     it('throws an error when trying to signup with invalid email', async () => {
@@ -97,17 +99,21 @@ describe('Authentication testing (e2e)', () => {
 
   describe('LOGIN', () => {
     it('throws an error when trying to login to unactivated account', async () => {
-      return RejectsInvalidCredentials.setBody({
-        email: dumpNotActivatedUser.email,
-        password: dumpNotActivatedUser.password,
-      }).test('/auth/login');
+      return RejectsInvalidCredentials.setMethod('post')
+        .setBody({
+          email: dumpNotActivatedUser.email,
+          password: dumpNotActivatedUser.password,
+        })
+        .test('/auth/login');
     });
 
     it('throws an error when trying to login to deactivated account', async () => {
-      return RejectsInvalidCredentials.setBody({
-        email: dumpDeletedUser.email,
-        password: dumpDeletedUser.password,
-      }).test('/auth/login');
+      return RejectsInvalidCredentials.setMethod('post')
+        .setBody({
+          email: dumpDeletedUser.email,
+          password: dumpDeletedUser.password,
+        })
+        .test('/auth/login');
     });
 
     it('handles login with valid credentials', async () => {

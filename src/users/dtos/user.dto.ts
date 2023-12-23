@@ -1,4 +1,5 @@
 import { Expose } from 'class-transformer';
+import { Order } from '../../orders/order.entity';
 
 export class UserDto {
   @Expose()
@@ -15,4 +16,7 @@ export class UserDto {
 
   @Expose()
   createdAt: Date;
+
+  @Expose()
+  orders: Order[];
 }

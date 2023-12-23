@@ -19,6 +19,11 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @OneToMany(() => Order, (order) => order.user, {
+    onDelete: 'CASCADE',
+  })
+  orders: Order[];
+
   @Column()
   password: string;
 
@@ -27,9 +32,6 @@ export class User {
 
   @Column({ default: 'user' })
   role: string;
-
-  @OneToMany(() => Order, (order) => order.user)
-  orders: Order[];
 
   @Column({ default: true })
   active: boolean;

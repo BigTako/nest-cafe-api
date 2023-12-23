@@ -1,17 +1,12 @@
-import { Min } from 'class-validator';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToMany,
 } from 'typeorm';
-
-export enum Category {
-  Pizza = 'pizza',
-  Burger = 'burger',
-  Drink = 'drink',
-  Cultery = 'cultery',
-}
+import { Order } from '../orders/order.entity';
+import { Category } from './enums/custom-category.enum';
 
 @Entity({ name: 'customs' })
 export class Custom {
@@ -23,6 +18,11 @@ export class Custom {
 
   @Column()
   price: number;
+
+  @ManyToMany(() => Order, (order) => order.customs, {
+    onDelete: 'CASCADE',
+  })
+  orders: Order[];
 
   @Column()
   category: Category;

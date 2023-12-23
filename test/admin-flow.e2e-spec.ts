@@ -23,6 +23,8 @@ import {
   patchResolver,
   postResolver,
 } from './request-testers';
+import { OrdersService } from '../src/orders/orders.service';
+import { Order } from '../src/orders/order.entity';
 
 const UserCRUDTests = (app: any) => {
   it('defines app', async () => {
@@ -36,15 +38,17 @@ describe('Admin flow testing (e2e)', () => {
   let app: INestApplication;
   let userService: UsersService;
   let authService: AuthService;
+  let orderService: OrdersService;
 
   let foundedCustoms: Custom[];
   let foundedUsers: User[];
+  let foundedOrders: Order[];
 
   let jwt: string;
 
   let RejectsPasswordChanging: RequestRejectTest;
   let RejectsIncorrectCurrentPassword: RequestRejectTest;
-  let RejectsAbsentPrice: RequestRejectTest;
+  let RejectsWrongFieldFormat: RequestRejectTest;
   let RejectsNotFound: RequestRejectTest;
 
   let ResolvesFind: RequestResolveTest;
@@ -66,9 +70,11 @@ describe('Admin flow testing (e2e)', () => {
     const dataSource = app.get(DataSource);
     await dataSource.createQueryBuilder().delete().from(Custom).execute();
     await dataSource.createQueryBuilder().delete().from(User).execute();
+    await dataSource.createQueryBuilder().delete().from(Order).execute();
 
     userService = app.get<UsersService>(UsersService);
     authService = app.get<AuthService>(AuthService);
+    orderService = app.get<OrdersService>(OrdersService);
 
     await userService.create(user);
   });
@@ -87,6 +93,7 @@ describe('Admin flow testing (e2e)', () => {
       expect(jwt).toBeDefined();
       expect(admin).toBeDefined();
       expect(admin.role).toBe('admin');
+      user.id = admin.id;
 
       RejectsIncorrectCurrentPassword = incorrectCurrentPasswordRejector(
         app,
@@ -95,7 +102,7 @@ describe('Admin flow testing (e2e)', () => {
 
       RejectsPasswordChanging = passwordUpdateRejector(app, jwt);
 
-      RejectsAbsentPrice = absentRequiredFieldRejector(
+      RejectsWrongFieldFormat = absentRequiredFieldRejector(
         app,
         jwt,
         'price must be a number conforming to the specified constraints',
@@ -138,7 +145,7 @@ describe('Admin flow testing (e2e)', () => {
     });
 
     it('throws BadRequestException trying to create custom with invalid body', async () => {
-      return RejectsAbsentPrice.setBody({
+      return RejectsWrongFieldFormat.setBody({
         name: 'Pepperoni',
         price: '100',
         category: 'pizza',
@@ -150,7 +157,7 @@ describe('Admin flow testing (e2e)', () => {
     });
 
     it('throws BadRequestException trying to update custom with invalid body', async () => {
-      return RejectsAbsentPrice.setMethod('patch')
+      return RejectsWrongFieldFormat.setMethod('patch')
         .setBody({ price: '100' })
         .test(`/customs/${foundedCustoms[0].id}`);
     });
@@ -165,9 +172,10 @@ describe('Admin flow testing (e2e)', () => {
       );
     });
 
-    it('should delete custom', async () => {
+    it('deletes custom', async () => {
       return ResolvesDelete.test(`/customs/${foundedCustoms[0].id}`, (res) => {
         expect(res.body).toBeDefined();
+        foundedCustoms.shift();
       });
     });
   });
@@ -216,7 +224,51 @@ describe('Admin flow testing (e2e)', () => {
     });
   });
 
-  describe('User interraction with own account', () => {
+  describe('Admin interraction with orders', () => {
+    it('creates an order', async () => {
+      return ResolvesCreate.setBody({ customs: [foundedCustoms[0].id] }).test(
+        '/orders',
+        (res) => {
+          expect(res.body).toBeDefined();
+          expect(res.body.customs).toHaveLength(1);
+          expect(res.body.customs[0].id).toBe(foundedCustoms[0].id);
+        },
+      );
+    });
+
+    it('finds all orders without options', async () => {
+      return ResolvesFind.test('/orders', (res) => {
+        foundedOrders = res.body;
+        expect(res.body).toHaveLength(1);
+        expect(res.body[0].customs).toHaveLength(1);
+      });
+    });
+
+    it('finds order by id', async () => {
+      return ResolvesFind.test(`/orders/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body.customs).toHaveLength(1);
+      });
+    });
+
+    it('updates order by id', async () => {
+      return ResolvesUpdate.setBody({
+        customs: [foundedCustoms[1].id],
+      }).test(`/orders/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body.customs).toHaveLength(1);
+        expect(res.body.customs[0].id).toBe(foundedCustoms[1].id);
+      });
+    });
+
+    it('deletes order by id', async () => {
+      return ResolvesDelete.test(`/orders/${foundedOrders[0].id}`, (res) => {
+        expect(res.body).toBeDefined();
+      });
+    });
+  });
+
+  describe('Admin interraction with own account', () => {
     it('gets current user info', async () => {
       return ResolvesFind.test('/users/me', (res) => {
         expect(res.body).toBeDefined();

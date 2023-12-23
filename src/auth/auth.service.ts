@@ -89,7 +89,6 @@ export class AuthService {
     const [user] = await this.userService.find({
       where: { email, active: true, activated: true },
     } as FindManyOptions);
-
     if (
       !user ||
       !(await this.userService.correctPassword(user.password, password))
