@@ -25,6 +25,7 @@ import {
 } from './request-testers';
 import { OrdersService } from '../src/orders/orders.service';
 import { Order } from '../src/orders/order.entity';
+import { orders } from './orders-test-data';
 
 const UserCRUDTests = (app: any) => {
   it('defines app', async () => {
@@ -225,22 +226,35 @@ describe('Admin flow testing (e2e)', () => {
   });
 
   describe('Admin interraction with orders', () => {
-    it('creates an order', async () => {
-      return ResolvesCreate.setBody({ customs: [foundedCustoms[0].id] }).test(
-        '/orders',
-        (res) => {
-          expect(res.body).toBeDefined();
-          expect(res.body.customs).toHaveLength(1);
-          expect(res.body.customs[0].id).toBe(foundedCustoms[0].id);
-        },
+    it('creates an orders', async () => {
+      const promises = orders.map((order) =>
+        request(app.getHttpServer())
+          .post('/orders')
+          .set('Authorization', `Bearer ${jwt}`)
+          .send({ ...order, customs: [foundedCustoms[0].id] })
+          .expect(201),
       );
+
+      const responses = await Promise.all(promises);
+      foundedOrders = responses.map((res) => res.body);
+    });
+
+    it('throws NotFoundException trying to create order with not existing custom', async () => {
+      return RejectsNotFound.setMethod('post')
+        .setMessage('Custom with id 999 not found')
+        .setBody({
+          customs: [999],
+        })
+        .test('/orders');
     });
 
     it('finds all orders without options', async () => {
       return ResolvesFind.test('/orders', (res) => {
         foundedOrders = res.body;
-        expect(res.body).toHaveLength(1);
-        expect(res.body[0].customs).toHaveLength(1);
+        expect(res.body).toHaveLength(foundedOrders.length);
+        expect(res.body[0].customs).toHaveLength(
+          foundedOrders[0].customs.length,
+        );
       });
     });
 
@@ -264,7 +278,40 @@ describe('Admin flow testing (e2e)', () => {
     it('deletes order by id', async () => {
       return ResolvesDelete.test(`/orders/${foundedOrders[0].id}`, (res) => {
         expect(res.body).toBeDefined();
+        foundedCustoms.shift();
       });
+    });
+  });
+
+  describe('Admin interraction with top ordered customs', () => {
+    it('gets top ordered customs', async () => {
+      return ResolvesFind.test('/customs/topOrdered', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(foundedCustoms.length);
+      });
+    });
+
+    it('gets top ordered customs of current user', async () => {
+      return ResolvesFind.test('/customs/topOrdered/me', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(1);
+      });
+    });
+
+    it('gets top ordered customs of user by id', async () => {
+      return ResolvesFind.test(
+        `/customs/topOrdered/${foundedUsers[0].id}`,
+        (res) => {
+          expect(res.body).toBeDefined();
+          expect(res.body).toHaveLength(1); // two orders for same custom
+        },
+      );
+    });
+
+    it('throws NotFoundException trying to get top ordered customs of user by invalid id', async () => {
+      return RejectsNotFound.setMethod('get')
+        .setMessage('User not found')
+        .test('/customs/topOrdered/999');
     });
   });
 

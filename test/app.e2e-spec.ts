@@ -181,49 +181,27 @@ describe('App runtime testing (e2e)', () => {
     });
   });
 
-  // describe('Unauthenticated guest interraction with users', () => {
-  //   it('throws Uauthorized trying to create a user', async () => {
-  //     return RejectsUnauthorized.setMethod('post').test('/users');
-  //   });
+  describe('Unathenticated user iterraction with top ordered customs', () => {
+    it('gets top ordered customs', async () => {
+      return ResolvesFind.test('/customs/topOrdered', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(0);
+      });
+    });
 
-  //   it('throws Uauthorized trying to find all users without options', async () => {
-  //     return RejectsUnauthorized.setMethod('get').test('/users');
-  //   });
+    it('throws Unauthorized trying to get current user top ordered customs', async () => {
+      return RejectsUnauthorized.setMethod('get').test(
+        '/customs/topOrdered/me',
+      );
+    });
 
-  //   it('throws Uauthorized trying to find user by id', async () => {
-  //     return RejectsUnauthorized.setMethod('get').test('/users/users/123');
-  //   });
+    it('throws Unauthorized trying to get user top ordered customs', async () => {
+      return RejectsUnauthorized.setMethod('get').test(
+        '/customs/topOrdered/123',
+      );
+    });
+  });
 
-  //   it('throws Uauthorized trying to update user by id', async () => {
-  //     return RejectsUnauthorized.setMethod('patch').test('/users/users/123');
-  //   });
-
-  //   it('throws Uauthorized trying to delete user by id', async () => {
-  //     return RejectsUnauthorized.setMethod('delete').test('/users/users/123');
-  //   });
-  // });
-
-  // describe('Unauthenticated guest interraction with orders', () => {
-  //   it('throws Uauthorized trying to all orders', async () => {
-  //     return RejectsUnauthorized.setMethod('get').test('/orders');
-  //   });
-
-  //   it('throws Uauthorized trying get order by id', async () => {
-  //     return RejectsUnauthorized.setMethod('get').test('/orders/users/123');
-  //   });
-
-  //   it('throws Uauthorized trying to create order', async () => {
-  //     return RejectsUnauthorized.setMethod('post').test('/orders');
-  //   });
-
-  //   it('throws Uauthorized trying to update order', async () => {
-  //     return RejectsUnauthorized.setMethod('patch').test('/orders/users/123');
-  //   });
-
-  //   it('throws Uauthorized trying to delete order', async () => {
-  //     return RejectsUnauthorized.setMethod('delete').test('/orders/users/123');
-  //   });
-  // });
   describe('Unauthenticated guest interraction with users', () => {
     it(`throws Unauthorized trying to get all users`, async () => {
       return RejectsUnauthorized.setMethod('get').test(`/users`);

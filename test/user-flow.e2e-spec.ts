@@ -207,6 +207,26 @@ describe('App runtime testing (e2e)', () => {
     });
   });
 
+  describe('Authenticated user iterraction with top ordered customs', () => {
+    it('gets top ordered customs', async () => {
+      return ResolvesFind.test('/customs/topOrdered', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(0);
+      });
+    });
+
+    it('gets top ordered customs of current user', async () => {
+      return ResolvesFind.test('/customs/topOrdered/me', (res) => {
+        expect(res.body).toBeDefined();
+        expect(res.body).toHaveLength(0);
+      });
+    });
+
+    it('throws Forbidden trying to get top ordered customs by user id', async () => {
+      return RejectsForbidden.setMethod('get').test('/customs/topOrdered/1');
+    });
+  });
+
   describe('Authenticated user interraction with all orders', () => {
     it('throws Forbidden trying to find all orders', async () => {
       return RejectsForbidden.setMethod('get').test('/orders');

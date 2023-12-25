@@ -17,38 +17,41 @@ import { AuthGuard } from '../guards/auth.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
+import { CurrentUser } from '../users/decorators/current-user.decorator';
+import { User } from '../users/user.entity';
 
 @Controller('customs')
 export class CustomsController {
   constructor(private customsService: CustomsService) {}
 
-  @Get()
-  getCustoms(@Query(QueryPipe) query: Object) {
-    return this.customsService.find(query);
-  }
-
-  @Get(':id')
-  getCustom(@Param('id') id: string) {
-    return this.customsService.findOne(parseInt(id));
-  }
-
   @Get('topOrdered')
-  getTopOrderedCustoms() {
-    return Promise.resolve([]);
+  getTopOrderedCustoms(@Query('limit') limit: number = 5) {
+    return this.customsService.findTopOrdered(limit);
   }
 
   @Get('topOrdered/me')
   @UseGuards(AuthGuard)
-  getCurrentUserTopOrderedCustoms() {
-    return Promise.resolve([]);
+  getCurrentUserTopOrderedCustoms(
+    @CurrentUser() user: User,
+    @Query('limit') limit: number = 5,
+  ) {
+    return this.customsService.findUserTopOrdered(user.id, limit);
   }
 
   @Get('topOrdered/:id')
   @UseGuards(AuthGuard)
   @Roles(Role.Admin)
   @UseGuards(AuthGuard, RolesGuard)
-  getUserTopOrderedCustoms() {
-    return Promise.resolve([]);
+  getUserTopOrderedCustoms(
+    @Param('id') id: string,
+    @Query('limit') limit: number = 5,
+  ) {
+    return this.customsService.findUserTopOrdered(parseInt(id), limit);
+  }
+
+  @Get()
+  getCustoms(@Query(QueryPipe) query: Object) {
+    return this.customsService.find(query);
   }
 
   @Post()
@@ -56,6 +59,11 @@ export class CustomsController {
   @UseGuards(AuthGuard, RolesGuard)
   createCustom(@Body() body: CreateCustomDto) {
     return this.customsService.create(body);
+  }
+
+  @Get(':id')
+  getCustom(@Param('id') id: string) {
+    return this.customsService.findOne(parseInt(id));
   }
 
   @Patch(':id')
