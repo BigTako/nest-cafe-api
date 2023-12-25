@@ -6,6 +6,7 @@ import { UsersService } from './users.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { UserSubscriber } from './subscribers/user.subscriber';
+import { CryptoService } from './crypto.service';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { UserSubscriber } from './subscribers/user.subscriber';
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UserSubscriber],
-  exports: [UsersService],
+  providers: [UsersService, UserSubscriber, CryptoService],
+  exports: [UsersService, CryptoService],
 })
 export class UsersModule {}

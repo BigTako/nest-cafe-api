@@ -14,7 +14,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private userService: UsersService,
     private jwtService: JwtService,
-    private configServie: ConfigService,
+    private configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -23,19 +23,19 @@ export class AuthGuard implements CanActivate {
 
     if (!token) {
       throw new UnauthorizedException(
-        'You are not logged in! Please log in to get access.',
+        this.configService.get('errorMessages.UNAUTHORIZED_ACCESS'),
       );
     }
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configServie.get('JWT_SECRET'),
+        secret: this.configService.get('JWT_SECRET'),
       });
 
       const user = await this.userService.findOne(Number(payload.id));
       request['user'] = user;
     } catch {
       throw new UnauthorizedException(
-        'You are not logged in! Please log in to get access.',
+        this.configService.get('errorMessages.UNAUTHORIZED_ACCESS'),
       );
     }
     return true;

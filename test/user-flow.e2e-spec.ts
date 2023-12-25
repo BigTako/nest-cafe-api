@@ -15,23 +15,20 @@ import {
   RequestResolveTest,
 } from '../src/utils/request-testing-utils';
 import {
-  absentRequiredFieldRejector,
   deleteResolver,
-  forbiddenRejector,
   getResolver,
-  incorrectCurrentPasswordRejector,
-  notFoundRejector,
-  passwordUpdateRejector,
   patchResolver,
   postResolver,
 } from './request-testers';
 import { Order } from '../src/orders/order.entity';
+import { ConfigService } from '@nestjs/config';
 
 describe('App runtime testing (e2e)', () => {
   let app: INestApplication;
   let userService: UsersService;
   let authService: AuthService;
   let customService: CustomsService;
+  let configService: ConfigService;
 
   let foundedCustoms: Custom[];
   let foundedOrders: Order[];
@@ -41,8 +38,8 @@ describe('App runtime testing (e2e)', () => {
 
   let RejectsForbidden: RequestRejectTest;
   let RejectsNotFound: RequestRejectTest;
-  let RejectsPasswordChanging: RequestRejectTest;
-  let RejectIncorrectCurrentPassword: RequestRejectTest;
+  let RejectsPasswordUpdate: RequestRejectTest;
+  let RejectsIncorrectCurrentPassword: RequestRejectTest;
   let RejectsWrongFieldFormat: RequestRejectTest;
 
   let ResolvesFind: RequestResolveTest;
@@ -66,12 +63,14 @@ describe('App runtime testing (e2e)', () => {
     userService = app.get<UsersService>(UsersService);
     authService = app.get<AuthService>(AuthService);
     customService = app.get<CustomsService>(CustomsService);
+    configService = app.get<ConfigService>(ConfigService);
 
     await userService.create(user);
 
     const initCustoms = customsData.map((custom) =>
       customService.create(custom as Custom),
     );
+
     await Promise.all(initCustoms);
   });
 
@@ -90,22 +89,41 @@ describe('App runtime testing (e2e)', () => {
       expect(client).toBeDefined();
       expect(jwt).toBeDefined();
       expect(client.role).toBe('user');
-      RejectsForbidden = forbiddenRejector(app, jwt);
 
-      RejectsPasswordChanging = passwordUpdateRejector(app, jwt);
-
-      RejectIncorrectCurrentPassword = incorrectCurrentPasswordRejector(
+      RejectsForbidden = new RequestRejectTest(
         app,
-        jwt,
-      );
+        403,
+        'get',
+        configService.get('errorMessages.ACCESS_FORBIDDEN'),
+      ).setJWT(jwt);
 
-      RejectsWrongFieldFormat = absentRequiredFieldRejector(
+      RejectsWrongFieldFormat = new RequestRejectTest(
         app,
-        jwt,
+        400,
+        'post',
         'price must be a number conforming to the specified constraints',
-      );
+      ).setJWT(jwt);
 
-      RejectsNotFound = notFoundRejector(app, jwt);
+      RejectsIncorrectCurrentPassword = new RequestRejectTest(
+        app,
+        400,
+        'patch',
+        configService.get('errorMessages.INCORRECT_CURRENT_PASSWORD'),
+      ).setJWT(jwt);
+
+      RejectsPasswordUpdate = new RequestRejectTest(
+        app,
+        403,
+        'patch',
+        configService.get('errorMessages.PASSWORD_UPDATE_FORBIDDEN'),
+      ).setJWT(jwt);
+
+      RejectsNotFound = new RequestRejectTest(
+        app,
+        404,
+        'get',
+        configService.get('errorMessages.DOCUMENT_NOT_FOUND'),
+      ).setJWT(jwt);
 
       ResolvesFind = getResolver(app, jwt);
       ResolvesCreate = postResolver(app, jwt);
@@ -296,7 +314,7 @@ describe('App runtime testing (e2e)', () => {
     });
 
     it('throws  trying to update password with user info', async () => {
-      return RejectsPasswordChanging.setBody({
+      return RejectsPasswordUpdate.setBody({
         name: 'Alex',
         password: '123456789',
       }).test('/users/me');
@@ -316,7 +334,7 @@ describe('App runtime testing (e2e)', () => {
     });
 
     it('throws BadRequestException trying to update current user password with wrong current password', async () => {
-      return RejectIncorrectCurrentPassword.setBody({
+      return RejectsIncorrectCurrentPassword.setBody({
         passwordCurrent: user.password + '123',
         password: '123456789',
         passwordConfirm: '123456789',

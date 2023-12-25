@@ -10,30 +10,34 @@ import { FindManyOptions, MoreThan } from 'typeorm';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../users/user.entity';
+import { CryptoService } from '../users/crypto.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private configService: ConfigService,
     private emailService: EmailService,
-    private userService: UsersService,
+    private usersService: UsersService,
+    private cryptoService: CryptoService,
   ) {}
 
   private async singToken(user: User): Promise<string> {
     try {
-      return await this.userService.createJWTToken(user);
+      return await this.cryptoService.createJWTToken(user);
     } catch (e) {
-      this.userService.remove(user.id);
-      throw new BadRequestException(`Error creating token ${e.message}`);
+      this.usersService.remove(user.id);
+      throw new BadRequestException(
+        this.configService.get('errorMessages.ERROR_CREATING_TOKEN'),
+      );
     }
   }
 
   async signup(data: CreateUserDto) {
     // create an account activation token
     const { token: activationToken, hashedToken } =
-      await this.userService.createAndHashRandomToken();
+      await this.cryptoService.createAndHashRandomToken();
 
-    const user = await this.userService.create({
+    const user = await this.usersService.create({
       ...data,
       accountActivationToken: hashedToken,
       accountActivationTokenExpires: new Date(Date.now() + 10 * 60 * 1000),
@@ -52,17 +56,17 @@ export class AuthService {
       await this.emailService.sendEmail(options);
       return { message: 'success' };
     } catch (e) {
-      await this.userService.remove(user.id);
+      await this.usersService.remove(user.id);
       throw new BadRequestException(
-        `There was an error sending the email. Try again later!`,
+        this.configService.get('errorMessages.EMAIL_SENDING_ERROR'),
       );
     }
   }
 
   async activateAccount(token: string) {
-    const hashedToken = this.userService.hashSHA256(token);
+    const hashedToken = this.cryptoService.hashSHA256(token);
 
-    const [user] = await this.userService.find({
+    const [user] = await this.usersService.find({
       where: {
         activated: false,
         accountActivationToken: hashedToken,
@@ -72,9 +76,11 @@ export class AuthService {
 
     // if token has not expired, and there is user, set the new password
     if (!user) {
-      throw new BadRequestException('Token is invalid or has expired');
+      throw new BadRequestException(
+        this.configService.get('errorMessages.INVALID_TOKEN'),
+      );
     }
-    const updatedUser = await this.userService.update(user.id, {
+    const updatedUser = await this.usersService.update(user.id, {
       activated: true,
       accountActivationToken: '',
       accountActivationTokenExpires: null,
@@ -86,14 +92,16 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const [user] = await this.userService.find({
+    const [user] = await this.usersService.find({
       where: { email, active: true, activated: true },
     } as FindManyOptions);
     if (
       !user ||
-      !(await this.userService.correctPassword(user.password, password))
+      !(await this.cryptoService.correctPassword(user.password, password))
     ) {
-      throw new BadRequestException('Incorrect email or password');
+      throw new BadRequestException(
+        this.configService.get('errorMessages.INVALID_CREDENTIALS'),
+      );
     }
     const jwt = await this.singToken(user);
 
@@ -102,17 +110,19 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     // find user by email
-    const [user] = await this.userService.find({
+    const [user] = await this.usersService.find({
       where: { email, active: true, activated: true },
     } as FindManyOptions);
     // check if it exists
     if (!user) {
-      throw new NotFoundException('No user with that email exists');
+      throw new NotFoundException(
+        this.configService.get('errorMessages.UNKNOWN_USER'),
+      );
     }
 
     // create a reset token
-    const resetToken = await this.userService.createPasswordResetToken(user);
-    await this.userService.update(user.id, user);
+    const resetToken = await this.cryptoService.createPasswordResetToken(user);
+    await this.usersService.update(user.id, user);
 
     try {
       const options = {
@@ -128,10 +138,10 @@ export class AuthService {
     } catch (e) {
       user.passwordResetToken = '';
       user.passwordResetExpires = null;
-      await this.userService.update(user.id, user);
+      await this.usersService.update(user.id, user);
       console.log(e);
       throw new BadRequestException(
-        `There was an error sending the email. Try again later!`,
+        this.configService.get<string>('errorMessages.EMAIL_SENDING_ERROR'),
       );
     }
   }
@@ -142,9 +152,9 @@ export class AuthService {
     passwordConfirm: string,
   ) {
     // get user based on the token
-    const hashedToken = this.userService.hashSHA256(token);
+    const hashedToken = this.cryptoService.hashSHA256(token);
 
-    const [user] = await this.userService.find({
+    const [user] = await this.usersService.find({
       where: {
         passwordResetToken: hashedToken,
         passwordResetExpires: MoreThan(new Date()),
@@ -153,7 +163,9 @@ export class AuthService {
 
     // if token has not expired, and there is user, set the new password
     if (!user) {
-      throw new BadRequestException('Token is invalid or has expired');
+      throw new BadRequestException(
+        this.configService.get('errorMessages.INVALID_TOKEN'),
+      );
     }
 
     user.password = password;
@@ -161,7 +173,7 @@ export class AuthService {
     user.passwordResetToken = '';
     user.passwordResetExpires = null;
 
-    await this.userService.update(user.id, user);
+    await this.usersService.update(user.id, user);
 
     const jwt = await this.singToken(user);
 

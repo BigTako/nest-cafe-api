@@ -1,4 +1,7 @@
-ormconfig.js
+email.config.ts
+orm.config.ts
+.env.development
+.env.test
 
 # compiled output
 /dist

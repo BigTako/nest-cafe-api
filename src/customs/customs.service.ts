@@ -1,34 +1,21 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Custom } from './custom.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindManyOptions, Repository } from 'typeorm';
 import { CreateCustomDto } from './dtos/create-custom.dto';
 import { UpdateCustomDto } from './dtos/update-custom.dto';
 import { UsersService } from '../users/users.service';
+import { ServiceFactory } from '../factories/service.factory';
+import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class CustomsService {
+export class CustomsService extends ServiceFactory<Custom> {
   constructor(
     @InjectRepository(Custom) private repo: Repository<Custom>,
     private userService: UsersService,
-  ) {}
-
-  find(options: FindManyOptions): Promise<Custom[]> {
-    return this.repo.find(options);
-  }
-
-  async findOne(id: number): Promise<Custom> {
-    const doc = await this.repo.findOne({ where: { id } });
-
-    if (!doc) {
-      throw new NotFoundException(`Document not found`);
-    }
-
-    return doc;
+    private configurationService: ConfigService,
+  ) {
+    super(repo, configurationService, CreateCustomDto, UpdateCustomDto);
   }
 
   async findTopOrdered(limit: number): Promise<Custom[]> {
@@ -62,22 +49,5 @@ export class CustomsService {
       .getRawMany();
 
     return topCustoms;
-  }
-
-  async create(data: CreateCustomDto): Promise<Custom> {
-    const doc = this.repo.create(data);
-    await this.repo.save(doc);
-    return doc;
-  }
-
-  async update(id: number, data: UpdateCustomDto) {
-    const doc = await this.findOne(id);
-    Object.assign(doc, data); // update user with new attrs
-    return this.repo.save(doc); // save updated user
-  }
-
-  async remove(id: number) {
-    const doc = await this.findOne(id);
-    return this.repo.remove(doc);
   }
 }

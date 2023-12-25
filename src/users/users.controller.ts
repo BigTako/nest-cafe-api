@@ -18,16 +18,20 @@ import { AuthGuard } from '../guards/auth.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
-import { Serialize } from '../interceptors/serialize.interceptor';
+import { Serialize } from '../decorators/serialize.decorator';
 import { UserDto } from './dtos/user.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { QueryPipe } from '../pipes/query.pipe';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('users')
 @Serialize(UserDto)
 @UseGuards(AuthGuard)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private configService: ConfigService,
+  ) {}
 
   @Get()
   @Roles(Role.Admin)
@@ -48,7 +52,7 @@ export class UsersController {
   ) {
     if (body.password || body.passwordConfirm) {
       throw new ForbiddenException(
-        'Password cannot be changed here. User /me/updatePassword instead.',
+        this.configService.get('errorMessages.PASSWORD_UPDATE_FORBIDDEN'),
       );
     }
     delete body.activated;

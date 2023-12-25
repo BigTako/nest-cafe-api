@@ -1,45 +1,35 @@
+import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
-import { INestApplication } from '@nestjs/common';
-import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
-import { Custom } from '../src/customs/custom.entity';
-import { UsersService } from '../src/users/users.service';
 import { AuthService } from '../src/auth/auth.service';
+import { Custom } from '../src/customs/custom.entity';
+import { Order } from '../src/orders/order.entity';
+import { OrdersService } from '../src/orders/orders.service';
 import { User } from '../src/users/user.entity';
-import { customsData, isICustom } from './customs-test-data';
-import { dumpAdmin, dumpUser, isIUser } from './users-test-data';
+import { UsersService } from '../src/users/users.service';
 import {
   RequestRejectTest,
   RequestResolveTest,
 } from '../src/utils/request-testing-utils';
+import { AppModule } from './../src/app.module';
+import { customsData, isICustom } from './customs-test-data';
+import { orders } from './orders-test-data';
 import {
-  absentRequiredFieldRejector,
   deleteResolver,
   getResolver,
-  incorrectCurrentPasswordRejector,
-  notFoundRejector,
-  passwordUpdateRejector,
   patchResolver,
   postResolver,
 } from './request-testers';
-import { OrdersService } from '../src/orders/orders.service';
-import { Order } from '../src/orders/order.entity';
-import { orders } from './orders-test-data';
-
-const UserCRUDTests = (app: any) => {
-  it('defines app', async () => {
-    expect(app).toBeDefined();
-  });
-
-  // Add other common tests as needed
-};
+import { dumpAdmin, dumpUser, isIUser } from './users-test-data';
 
 describe('Admin flow testing (e2e)', () => {
   let app: INestApplication;
   let userService: UsersService;
   let authService: AuthService;
   let orderService: OrdersService;
+  let configService: ConfigService;
 
   let foundedCustoms: Custom[];
   let foundedUsers: User[];
@@ -47,7 +37,7 @@ describe('Admin flow testing (e2e)', () => {
 
   let jwt: string;
 
-  let RejectsPasswordChanging: RequestRejectTest;
+  let RejectsPasswordUpdate: RequestRejectTest;
   let RejectsIncorrectCurrentPassword: RequestRejectTest;
   let RejectsWrongFieldFormat: RequestRejectTest;
   let RejectsNotFound: RequestRejectTest;
@@ -73,6 +63,7 @@ describe('Admin flow testing (e2e)', () => {
     await dataSource.createQueryBuilder().delete().from(User).execute();
     await dataSource.createQueryBuilder().delete().from(Order).execute();
 
+    configService = app.get<ConfigService>(ConfigService);
     userService = app.get<UsersService>(UsersService);
     authService = app.get<AuthService>(AuthService);
     orderService = app.get<OrdersService>(OrdersService);
@@ -96,20 +87,33 @@ describe('Admin flow testing (e2e)', () => {
       expect(admin.role).toBe('admin');
       user.id = admin.id;
 
-      RejectsIncorrectCurrentPassword = incorrectCurrentPasswordRejector(
+      RejectsWrongFieldFormat = new RequestRejectTest(
         app,
-        jwt,
-      );
-
-      RejectsPasswordChanging = passwordUpdateRejector(app, jwt);
-
-      RejectsWrongFieldFormat = absentRequiredFieldRejector(
-        app,
-        jwt,
+        400,
+        'post',
         'price must be a number conforming to the specified constraints',
-      );
+      ).setJWT(jwt);
 
-      RejectsNotFound = notFoundRejector(app, jwt);
+      RejectsIncorrectCurrentPassword = new RequestRejectTest(
+        app,
+        400,
+        'patch',
+        configService.get('errorMessages.INCORRECT_CURRENT_PASSWORD'),
+      ).setJWT(jwt);
+
+      RejectsPasswordUpdate = new RequestRejectTest(
+        app,
+        403,
+        'patch',
+        configService.get('errorMessages.PASSWORD_UPDATE_FORBIDDEN'),
+      ).setJWT(jwt);
+
+      RejectsNotFound = new RequestRejectTest(
+        app,
+        404,
+        'get',
+        configService.get('errorMessages.DOCUMENT_NOT_FOUND'),
+      ).setJWT(jwt);
 
       ResolvesFind = getResolver(app, jwt);
       ResolvesCreate = postResolver(app, jwt);
@@ -206,6 +210,10 @@ describe('Admin flow testing (e2e)', () => {
         expect(isIUser(res.body)).toBe(true);
         expect(res.body.email).toBe(examinee.email);
       });
+    });
+
+    it('throws NotFound trying to find unexisting user', async () => {
+      return RejectsNotFound.setMethod('get').test('/users/999');
     });
 
     it('successfully updates user by id', async () => {
@@ -335,7 +343,7 @@ describe('Admin flow testing (e2e)', () => {
     });
 
     it('throws ForbiddenException trying to update password with user info', async () => {
-      return RejectsPasswordChanging.setBody({
+      return RejectsPasswordUpdate.setBody({
         name: 'Alex',
         password: '123456789',
       }).test('/users/me');

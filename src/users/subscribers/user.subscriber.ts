@@ -7,12 +7,13 @@ import {
 } from 'typeorm';
 import { UsersService } from '../users.service';
 import { User } from '../user.entity';
+import { CryptoService } from '../crypto.service';
 
 @EventSubscriber()
 export class UserSubscriber implements EntitySubscriberInterface<User> {
   constructor(
     connection: Connection,
-    private readonly usersService: UsersService,
+    private cryptoService: CryptoService,
   ) {
     connection.subscribers.push(this);
   }
@@ -22,7 +23,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
   }
 
   async beforeInsert(event: InsertEvent<User>) {
-    event.entity.password = await this.usersService.hashPassword(
+    event.entity.password = await this.cryptoService.hashPassword(
       event.entity.password,
     );
     event.entity.passwordConfirm = '';
@@ -30,7 +31,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 
   async beforeUpdate(event: UpdateEvent<User>) {
     if (event.entity.password !== event.databaseEntity.password) {
-      event.entity.password = await this.usersService.hashPassword(
+      event.entity.password = await this.cryptoService.hashPassword(
         event.entity.password,
       );
     }

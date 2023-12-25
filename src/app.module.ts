@@ -11,17 +11,17 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { AuthModule } from './auth/auth.module';
-import { EmailService } from './email/email.service';
 import * as cookieParser from 'cookie-parser';
 
 import databaseConfig from '../config/orm.config';
 import emailConfig from '../config/email.config';
+import errorMessages from '../config/error-messages.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-      load: [databaseConfig, emailConfig],
+      load: [databaseConfig, emailConfig, errorMessages],
       expandVariables: true,
       isGlobal: true,
     }),
@@ -52,11 +52,10 @@ import emailConfig from '../config/email.config';
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
-    EmailService,
   ],
 })
 export class AppModule {
-  constructor(private configService: ConfigService) {}
+  constructor() {}
 
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(cookieParser()).forRoutes('*');

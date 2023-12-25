@@ -31,7 +31,9 @@ export class EmailService {
         text: options.text,
       });
     } else {
-      throw new BadRequestException('Transporter not initialized');
+      throw new BadRequestException(
+        this.configService.get('errorMessages.EMAIL_TRANSPORTER_ERROR'),
+      );
     }
   }
 

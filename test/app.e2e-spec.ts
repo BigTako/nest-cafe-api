@@ -10,52 +10,18 @@ import {
   RequestRejectTest,
   RequestResolveTest,
 } from '../src/utils/request-testing-utils';
-import {
-  getResolver,
-  notFoundRejector,
-  unauthorizedRejector,
-} from './request-testers';
-
-class Rejector {
-  constructor(
-    private exceptionHandler: RequestRejectTest,
-    private entity: string,
-  ) {}
-
-  rejectsGetAll() {
-    it(`throws Unauthorized trying to get all ${this.entity}`, async () => {
-      return this.exceptionHandler.setMethod('get').test(`/${this.entity}`);
-    });
-    return this;
-  }
-
-  rejectsGetOne(id: string) {
-    it(`throws Unauthorized trying to get ${this.entity} by id`, async () => {
-      return this.exceptionHandler
-        .setMethod('get')
-        .test(`/${this.entity}/${id}`);
-    });
-    return this;
-  }
-
-  rejectsCreate() {
-    it(`throws Unauthorized trying to create ${this.entity}`, async () => {
-      return this.exceptionHandler.setMethod('post').test(`/${this.entity}`);
-    });
-    return this;
-  }
-}
+import { getResolver } from './request-testers';
+import { ConfigService } from '@nestjs/config';
 
 describe('App runtime testing (e2e)', () => {
   let app: INestApplication;
   let customService: CustomsService;
+  let configService: ConfigService;
   let foundedCustoms: Custom[] = [];
 
   let RejectsUnauthorized: RequestRejectTest;
   let RejectsNotFound: RequestRejectTest;
   let ResolvesFind: RequestResolveTest;
-
-  let UnauthorizedUserRejector: Rejector;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -65,17 +31,28 @@ describe('App runtime testing (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    RejectsUnauthorized = unauthorizedRejector(app, '');
-    RejectsNotFound = notFoundRejector(app, '');
-    ResolvesFind = getResolver(app, '');
+    customService = app.get<CustomsService>(CustomsService);
+    configService = app.get<ConfigService>(ConfigService);
 
-    UnauthorizedUserRejector = new Rejector(RejectsUnauthorized, 'users');
+    RejectsUnauthorized = new RequestRejectTest(
+      app,
+      401,
+      'get',
+      configService.get('errorMessages.UNAUTHORIZED_ACCESS'),
+    );
+
+    RejectsNotFound = new RequestRejectTest(
+      app,
+      404,
+      'get',
+      configService.get('errorMessages.DOCUMENT_NOT_FOUND'),
+    );
+
+    ResolvesFind = getResolver(app, '');
 
     const dataSource = app.get(DataSource);
     await dataSource.createQueryBuilder().delete().from(Custom).execute();
     await dataSource.createQueryBuilder().delete().from(User).execute();
-
-    customService = app.get<CustomsService>(CustomsService);
 
     const initCustoms = customsData.map((custom) =>
       customService.create(custom as Custom),

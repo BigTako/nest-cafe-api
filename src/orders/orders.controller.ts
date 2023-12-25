@@ -18,24 +18,28 @@ import { UpdateOrderDto } from './dtos/update-order.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { CurrentUser } from '../users/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
-import { Serialize } from '../interceptors/serialize.interceptor';
+import { Serialize } from '../decorators/serialize.decorator';
 
 import { GetOrderGto } from './dtos/get-order.dto';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { UpdateCurrentUserOrderDto } from './dtos/update-current-user-order.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('orders')
 @Serialize(GetOrderGto)
 @UseGuards(AuthGuard)
 export class OrdersController {
-  constructor(private orderService: OrdersService) {}
+  constructor(
+    private ordersService: OrdersService,
+    private configService: ConfigService,
+  ) {}
   @Get()
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
   getOrders(@Query(QueryPipe) query: FindManyOptions) {
-    return this.orderService.find(query);
+    return this.ordersService.find(query);
   }
 
   @Get('me')
@@ -43,7 +47,7 @@ export class OrdersController {
     @CurrentUser() user: User,
     @Query(QueryPipe) query: FindManyOptions,
   ) {
-    return this.orderService.find({
+    return this.ordersService.find({
       ...query,
       where: { user: user.id, ...query.where },
     });
@@ -54,11 +58,13 @@ export class OrdersController {
     @Param('id') id: string,
     @CurrentUser() user: User,
   ) {
-    const [order] = await this.orderService.find({
+    const [order] = await this.ordersService.find({
       where: { id: +id, user: user.id },
     });
     if (!order) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException(
+        this.configService.get('errorMessages.DOCUMENT_NOT_FOUND'),
+      );
     }
     return order;
   }
@@ -71,7 +77,7 @@ export class OrdersController {
   ) {
     const order = await this.getCurrentUserOrder(id, user);
 
-    return this.orderService.update(order.id, data);
+    return this.ordersService.update(order.id, data);
   }
 
   @Delete('me/:id')
@@ -80,32 +86,32 @@ export class OrdersController {
     @CurrentUser() user: User,
   ) {
     const order = await this.getCurrentUserOrder(id, user);
-    return this.orderService.remove(order.id);
+    return this.ordersService.remove(order.id);
   }
 
   @Get(':id')
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
   getOrder(@Param('id') id: string) {
-    return this.orderService.findOne(+id);
+    return this.ordersService.findOne(+id);
   }
 
   @Post()
   createOrder(@Body() data: CreateOrderDto, @CurrentUser() user: User) {
-    return this.orderService.create(data.customs, user);
+    return this.ordersService.create({ ...data, user });
   }
 
   @Patch(':id')
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
   updateOrder(@Param('id') id: string, @Body() data: UpdateOrderDto) {
-    return this.orderService.update(+id, data);
+    return this.ordersService.update(+id, data);
   }
 
   @Delete(':id')
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
   deleteOrder(@Param('id') id: string) {
-    return this.orderService.remove(+id);
+    return this.ordersService.remove(+id);
   }
 }

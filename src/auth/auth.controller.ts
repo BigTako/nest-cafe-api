@@ -1,20 +1,12 @@
-import {
-  Body,
-  Controller,
-  Param,
-  Patch,
-  Post,
-  Req,
-  Res,
-  Session,
-} from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dtos/create-user.dto';
 import { LoginDto } from './dtos/login.dto';
 import { Response } from 'express';
-import { SerializeAuth } from '../interceptors/serialize.interceptor';
-import { UserDto } from '../users/dtos/user.dto';
-import { UpdateUserPasswordDto } from '../users/dtos/update-user-password.dto';
+import { Serialize } from '../decorators/serialize.decorator';
+import { UserPasswordDto } from '../users/dtos/user-password.dto';
+import { AuthResponceDto } from './dtos/auth-responce.dto';
+import { SetAuthorization } from '../decorators/set-auth.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -26,15 +18,17 @@ export class AuthController {
     return data;
   }
 
-  @SerializeAuth(UserDto)
+  @SetAuthorization('jwt')
+  @Serialize(AuthResponceDto)
   @Patch('activateAccount/:token')
   async activateAccount(@Param('token') token: string) {
     const data = await this.authService.activateAccount(token);
     return data;
   }
 
-  @SerializeAuth(UserDto)
   @Post('login')
+  @SetAuthorization('jwt')
+  @Serialize(AuthResponceDto)
   async login(@Body() body: LoginDto) {
     const data = await this.authService.login(body.email, body.password);
     return data;
@@ -54,15 +48,16 @@ export class AuthController {
   }
 
   @Patch('resetPassword/:token')
+  @SetAuthorization('jwt')
+  @Serialize(AuthResponceDto)
   async resetPassword(
     @Param('token') token: string,
-    @Body() body: Partial<UpdateUserPasswordDto>,
+    @Body() body: UserPasswordDto,
   ) {
-    await this.authService.resetPassword(
+    return await this.authService.resetPassword(
       token,
       body.password,
       body.passwordConfirm,
     );
-    return { message: 'success' };
   }
 }

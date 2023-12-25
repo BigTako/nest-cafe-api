@@ -11,13 +11,17 @@ import {
   dumpNotActivatedUser,
 } from './users-test-data';
 import { RequestRejectTest } from '../src/utils/request-testing-utils';
-import { badRequestRejector, postResolver } from './request-testers';
+import { postResolver } from './request-testers';
+import { CryptoService } from '../src/users/crypto.service';
 
 let RejectsInvalidCredentials: RequestRejectTest;
+let user: User;
+let passwordResetToken: string;
 
 describe('Authentication testing (e2e)', () => {
   let app: INestApplication;
   let userService: UsersService;
+  let cryptoService: CryptoService;
   let jwt: string;
 
   beforeAll(async () => {
@@ -36,18 +40,25 @@ describe('Authentication testing (e2e)', () => {
 
     userService = app.get(UsersService);
 
-    await userService.create(dumpAdmin as User);
+    user = await userService.create(dumpAdmin as User);
+    cryptoService = app.get<CryptoService>(CryptoService);
+
+    passwordResetToken = await cryptoService.createPasswordResetToken(user);
+    await userService.update(user.id, user);
 
     await userService.create(dumpNotActivatedUser as User);
 
     await userService.create(dumpDeletedUser as User);
 
-    RejectsInvalidCredentials = badRequestRejector(app, '').setMessage(
+    RejectsInvalidCredentials = new RequestRejectTest(
+      app,
+      400,
+      'get',
       'Incorrect email or password',
     );
   });
 
-  describe('SIGNUP', () => {
+  describe('Sign Up', () => {
     it('throws an error when trying to signup with email which is in use', async () => {
       return new RequestRejectTest(
         app,
@@ -97,7 +108,7 @@ describe('Authentication testing (e2e)', () => {
     });
   });
 
-  describe('LOGIN', () => {
+  describe('Log In', () => {
     it('throws an error when trying to login to unactivated account', async () => {
       return RejectsInvalidCredentials.setMethod('post')
         .setBody({
@@ -124,6 +135,7 @@ describe('Authentication testing (e2e)', () => {
           expect(res.body.jwt).toBeDefined();
           expect(res.body.user).toBeDefined();
           jwt = res.body.jwt;
+          user = res.body.user;
         });
     });
 
@@ -148,9 +160,70 @@ describe('Authentication testing (e2e)', () => {
     });
   });
 
-  describe('LOGOUT', () => {
+  describe('Log Out', () => {
     it('handles logout request', async () => {
       return postResolver(app, jwt).test('/auth/logout', (res) => {});
+    });
+  });
+
+  describe('Forgot Password', () => {
+    it('throws BadRequestException trying to reset password(forgot password) with invalid email', async () => {
+      return new RequestRejectTest(
+        app,
+        404,
+        'post',
+        'No user with that email exists',
+      )
+        .setBody({
+          name: 'van2',
+          email: 'vangmail.com',
+          password: '12345678',
+          passwordConfirm: '12345678',
+        })
+        .test('/auth/forgotPassword');
+    });
+  });
+
+  describe('Reset Password', () => {
+    it('throws BadRequestException trying to reset password with invalid token', async () => {
+      return new RequestRejectTest(
+        app,
+        400,
+        'patch',
+        'Token is invalid or has expired',
+      )
+        .setBody({
+          password: '123456789',
+          passwordConfirm: '123456789',
+        })
+        .test('/auth/resetPassword/1234567890');
+    });
+
+    it('throws BadRequestException trying to reset password with invalid body', async () => {
+      return new RequestRejectTest(
+        app,
+        400,
+        'patch',
+        'password must be a string',
+      )
+        .setBody({
+          passwordConfirm: '123456789',
+        })
+        .test(`/auth/resetPassword/${passwordResetToken}`);
+    });
+
+    it('throws BadRequestException trying to reset password with invalid password', async () => {
+      return new RequestRejectTest(
+        app,
+        400,
+        'patch',
+        'password must be longer than or equal to 8 characters',
+      )
+        .setBody({
+          password: '1234567',
+          passwordConfirm: '1234567',
+        })
+        .test(`/auth/resetPassword/${passwordResetToken}`);
     });
   });
 });
