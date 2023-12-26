@@ -1,5 +1,4 @@
-.env.*
-requirements.md
+.env*
 
 # compiled output
 /dist
