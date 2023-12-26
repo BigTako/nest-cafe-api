@@ -22,7 +22,10 @@ import { CurrentUser } from '../users/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
-@Controller('customs')
+@Controller({
+  path: 'customs',
+  version: '1',
+})
 @UseInterceptors(CacheInterceptor)
 export class CustomsController {
   constructor(private customsService: CustomsService) {}

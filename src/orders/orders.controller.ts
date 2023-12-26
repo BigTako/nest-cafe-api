@@ -29,7 +29,10 @@ import { UpdateCurrentUserOrderDto } from './dtos/update-current-user-order.dto'
 import { ConfigService } from '@nestjs/config';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
-@Controller('orders')
+@Controller({
+  path: 'orders',
+  version: '1',
+})
 @Serialize(GetOrderGto)
 @UseGuards(AuthGuard)
 @UseInterceptors(CacheInterceptor)

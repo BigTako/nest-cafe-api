@@ -26,7 +26,10 @@ import { QueryPipe } from '../pipes/query.pipe';
 import { ConfigService } from '@nestjs/config';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
-@Controller('users')
+@Controller({
+  path: 'users',
+  version: '1',
+})
 @Serialize(UserDto)
 @UseGuards(AuthGuard)
 @UseInterceptors(CacheInterceptor)

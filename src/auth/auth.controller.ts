@@ -8,7 +8,10 @@ import { UserPasswordDto } from '../users/dtos/user-password.dto';
 import { AuthResponceDto } from './dtos/auth-responce.dto';
 import { SetAuthorization } from '../decorators/set-auth.decorator';
 
-@Controller('auth')
+@Controller({
+  path: 'auth',
+  version: '1',
+})
 export class AuthController {
   constructor(private authService: AuthService) {}
 

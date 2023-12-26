@@ -24,6 +24,7 @@ import cacheConfig from '../config/cache.config';
 @Module({
   imports: [
     ConfigModule.forRoot({
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       load: [databaseConfig, emailConfig, errorMessages, cacheConfig],
       expandVariables: true,
       isGlobal: true,
