@@ -26,8 +26,8 @@ export class OrdersModule {
     consumer
       .apply(PopulateOrderMiddleware)
       .forRoutes(
-        { path: 'orders', method: RequestMethod.POST },
-        { path: 'orders/:id', method: RequestMethod.PATCH },
+        { path: '/orders', method: RequestMethod.POST },
+        { path: '/orders/:id', method: RequestMethod.PATCH },
       );
   }
 }

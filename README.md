@@ -34,6 +34,24 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Generate migrations
+
+`npm run migration:generate --name=<migration name>`
+
+**⚠do not forget to remove all table from database before generating migration**
+
+## Run migrations
+
+`npm run migration:run`
+
+will run migrations located in migrations directory
+
+## Revert migrations
+
+`npm run migration:revert`
+
+will run migrations located in migrations directory
+
 ## License
 
 Nest is [MIT licensed](LICENSE).

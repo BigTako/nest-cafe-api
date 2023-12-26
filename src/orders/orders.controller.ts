@@ -23,7 +23,7 @@ import { Serialize } from '../decorators/serialize.decorator';
 
 import { GetOrderGto } from './dtos/get-order.dto';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '../enums/role.enum';
+import { Role } from '../users/enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { UpdateCurrentUserOrderDto } from './dtos/update-current-user-order.dto';
 import { ConfigService } from '@nestjs/config';

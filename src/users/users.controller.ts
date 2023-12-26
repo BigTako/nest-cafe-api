@@ -17,7 +17,7 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 import { UpdateUserPasswordDto } from './dtos/update-user-password.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '../enums/role.enum';
+import { Role } from './enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { Serialize } from '../decorators/serialize.decorator';
 import { UserDto } from './dtos/user.dto';

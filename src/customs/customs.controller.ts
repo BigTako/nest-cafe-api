@@ -16,7 +16,7 @@ import { CreateCustomDto } from './dtos/create-custom.dto';
 import { UpdateCustomDto } from './dtos/update-custom.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '../enums/role.enum';
+import { Role } from '../users/enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { CurrentUser } from '../users/decorators/current-user.decorator';
 import { User } from '../users/user.entity';

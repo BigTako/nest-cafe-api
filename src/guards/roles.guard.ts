@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Role } from '../enums/role.enum';
+import { Role } from '../users/enums/role.enum';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { ConfigService } from '@nestjs/config';
 

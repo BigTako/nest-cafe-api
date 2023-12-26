@@ -34,7 +34,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           res.message = [`${key} ${value} already exists`];
         }
       } else {
-        console.log(exception);
         res.message = [
           `Error ${exception.code || 500}: ${
             exception.detail || exception.message

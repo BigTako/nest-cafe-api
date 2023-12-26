@@ -1,5 +1,4 @@
-.env.development
-.env.test
+.env.*
 requirements.md
 
 # compiled output
