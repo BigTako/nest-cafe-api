@@ -1,7 +1,6 @@
-email.config.ts
-orm.config.ts
 .env.development
 .env.test
+requirements.md
 
 # compiled output
 /dist

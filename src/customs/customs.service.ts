@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Custom } from './custom.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCustomDto } from './dtos/create-custom.dto';
@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { ServiceFactory } from '../factories/service.factory';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class CustomsService extends ServiceFactory<Custom> {
@@ -28,6 +29,7 @@ export class CustomsService extends ServiceFactory<Custom> {
       .orderBy('ordersCount', 'DESC')
       .limit(limit)
       .getRawMany();
+
     return topCustoms;
   }
 

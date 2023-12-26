@@ -19,7 +19,7 @@ export class Order {
   @ManyToOne(() => User, (user) => user.orders, {
     eager: true,
     onDelete: 'CASCADE',
-  }) // report.user is foreign key to User instance
+  })
   user: User;
 
   @Column({ default: Status.New })
@@ -31,7 +31,6 @@ export class Order {
   @ManyToMany(() => Custom, (custom) => custom.orders, {
     cascade: true,
     eager: true,
-    onDelete: 'CASCADE',
   })
   @JoinTable()
   customs: Custom[];

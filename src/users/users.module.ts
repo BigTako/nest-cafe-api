@@ -7,6 +7,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { UserSubscriber } from './subscribers/user.subscriber';
 import { CryptoService } from './crypto.service';
+import { CACHE_MANAGER, CacheModule } from '@nestjs/cache-manager';
+import { AuthGuard } from '../guards/auth.guard';
 
 @Module({
   imports: [

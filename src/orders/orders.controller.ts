@@ -9,6 +9,7 @@ import {
   Body,
   UseGuards,
   NotFoundException,
+  UseInterceptors,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { QueryPipe } from '../pipes/query.pipe';
@@ -26,16 +27,19 @@ import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { UpdateCurrentUserOrderDto } from './dtos/update-current-user-order.dto';
 import { ConfigService } from '@nestjs/config';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('orders')
 @Serialize(GetOrderGto)
 @UseGuards(AuthGuard)
+@UseInterceptors(CacheInterceptor)
 export class OrdersController {
   constructor(
     private ordersService: OrdersService,
     private configService: ConfigService,
   ) {}
   @Get()
+  @CacheTTL(0)
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
   getOrders(@Query(QueryPipe) query: FindManyOptions) {
@@ -89,6 +93,7 @@ export class OrdersController {
     return this.ordersService.remove(order.id);
   }
 
+  @CacheTTL(0)
   @Get(':id')
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)

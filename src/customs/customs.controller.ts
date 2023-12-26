@@ -8,6 +8,7 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CustomsService } from './customs.service';
 import { QueryPipe } from '../pipes/query.pipe';
@@ -19,16 +20,20 @@ import { Role } from '../enums/role.enum';
 import { RolesGuard } from '../guards/roles.guard';
 import { CurrentUser } from '../users/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('customs')
+@UseInterceptors(CacheInterceptor)
 export class CustomsController {
   constructor(private customsService: CustomsService) {}
 
+  // 10 seconds
   @Get('topOrdered')
   getTopOrderedCustoms(@Query('limit') limit: number = 5) {
     return this.customsService.findTopOrdered(limit);
   }
 
+  // 10 seconds
   @Get('topOrdered/me')
   @UseGuards(AuthGuard)
   getCurrentUserTopOrderedCustoms(
@@ -38,6 +43,7 @@ export class CustomsController {
     return this.customsService.findUserTopOrdered(user.id, limit);
   }
 
+  // 10 seconds
   @Get('topOrdered/:id')
   @UseGuards(AuthGuard)
   @Roles(Role.Admin)
@@ -49,6 +55,7 @@ export class CustomsController {
     return this.customsService.findUserTopOrdered(parseInt(id), limit);
   }
 
+  @CacheTTL(0)
   @Get()
   getCustoms(@Query(QueryPipe) query: Object) {
     return this.customsService.find(query);
@@ -61,6 +68,7 @@ export class CustomsController {
     return this.customsService.create(body);
   }
 
+  @CacheTTL(0)
   @Get(':id')
   getCustom(@Param('id') id: string) {
     return this.customsService.findOne(parseInt(id));

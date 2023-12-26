@@ -16,14 +16,24 @@ import * as cookieParser from 'cookie-parser';
 import databaseConfig from '../config/orm.config';
 import emailConfig from '../config/email.config';
 import errorMessages from '../config/error-messages.config';
+import { CacheModule } from '@nestjs/cache-manager';
+import cacheConfig from '../config/cache.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
-      load: [databaseConfig, emailConfig, errorMessages],
+      load: [databaseConfig, emailConfig, errorMessages, cacheConfig],
       expandVariables: true,
       isGlobal: true,
+    }),
+
+    CacheModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) =>
+        configService.get('cacheConfig'),
+      isGlobal: true,
+      inject: [ConfigService],
     }),
 
     TypeOrmModule.forRootAsync({

@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ForbiddenException,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
@@ -23,16 +24,19 @@ import { UserDto } from './dtos/user.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { QueryPipe } from '../pipes/query.pipe';
 import { ConfigService } from '@nestjs/config';
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('users')
 @Serialize(UserDto)
 @UseGuards(AuthGuard)
+@UseInterceptors(CacheInterceptor)
 export class UsersController {
   constructor(
     private usersService: UsersService,
     private configService: ConfigService,
   ) {}
 
+  @CacheTTL(0)
   @Get()
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)
@@ -41,6 +45,7 @@ export class UsersController {
   }
 
   @Get('me')
+  @CacheKey('currentUser')
   getCurrentUser(@CurrentUser() user: UserDto) {
     return user;
   }
@@ -73,6 +78,7 @@ export class UsersController {
     return this.usersService.update(user.id, { active: false });
   }
 
+  @CacheTTL(0)
   @Get(':id')
   @Roles(Role.Admin)
   @UseGuards(RolesGuard)

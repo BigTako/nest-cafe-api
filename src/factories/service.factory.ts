@@ -1,7 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { BaseEntity, FindManyOptions, Repository } from 'typeorm';
+import { FindManyOptions, Repository } from 'typeorm';
 
 interface ClassConstructor {
   new (...args: any[]): {}; // means class

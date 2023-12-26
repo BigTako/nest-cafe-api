@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -8,6 +8,7 @@ import { CryptoService } from './crypto.service';
 import { ServiceFactory } from '../factories/service.factory';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class UsersService extends ServiceFactory<User> {
