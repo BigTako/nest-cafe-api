@@ -1,0 +1,37 @@
+version: "3.8"
+services:
+  database-dev:
+    image: "postgres"
+    container_name: database-dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - "db_data:/var/lib/postgresql/data"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=nest-cafe-db-dev
+  backend-dev:
+    container_name: nest-cafe-api-dev-backend
+    build:
+      target: dev
+      context: ./nest-cafe
+      dockerfile: Dockerfile
+    volumes:
+      - D:\web-projects\nest-projects\nest-cafe-api\nest-cafe:/app
+      - /app/node_modules
+    environment:
+      - PORT=3000
+      - HOST=http://127.0.0.1:3000
+      - DB_TYPE=postgres # postgres, mysql, sqlite...
+      - DB_NAME=nest-cafe-db-dev # database name
+      - DB_HOST=database-dev # database host
+      - DB_PORT=5432 # database port
+      - DB_USER=postgres # username you set when installing db
+      - DB_PASSWORD=root # password for user
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database-dev
+volumes:
+  db_data:

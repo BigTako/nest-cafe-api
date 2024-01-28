@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  database-test:
+    image: "postgres"
+    container_name: database-test
+    ports:
+      - "5433:5433"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=nest-cafe-db-test
+      - PGPORT=5433
+  backend-test:
+    container_name: nest-cafe-api-test-backend
+    build:
+      target: dev
+      context: ./nest-cafe
+      dockerfile: Dockerfile
+    environment:
+      - PORT=4000
+      - HOST=http://127.0.0.1:4000
+      - DB_TYPE=postgres # postgres, mysql, sqlite...
+      - DB_NAME=nest-cafe-db-test # database name
+      - DB_HOST=database-test # database host
+      - DB_PORT=5433 # database port
+      - DB_USER=postgres # username you set when installing db
+      - DB_PASSWORD=root # password for user
+    ports:
+      - "4000:4000"
+    depends_on:
+      - database-test
